@@ -287,6 +287,28 @@ function drawCat(rc, g, s, pose){
     rc.circle(13, 31, 3.4, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
     rc.circle(13.6, 31, 1.4, opts(s+12, INK, 'solid', {stroke:INK, roughness:.5}));
     rc.line(30, 26, 44, 30, opts(s+11, null, null, {stroke:PAL.leash, strokeWidth:2.4}));
+  } else if (pose === 'hunch0' || pose === 'hunch1'){
+    // low, hunched, tail tucked, ears back, squinting — a wet unhappy cat
+    const step = pose === 'hunch1';
+    if (step){
+      rc.line(22, 40, 18, 47, opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(29, 40, 31, 47, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(41, 40, 38, 47, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(48, 40, 52, 47, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    } else {
+      rc.line(22, 40, 22, 47, opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(28, 40, 27, 47, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(42, 40, 43, 47, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(48, 40, 47, 47, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    }
+    rc.ellipse(35, 35, 42, 14, co);
+    rc.ellipse(54, 32, 17, 13, opts(s+5, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    rc.polygon([[48,28],[52,23],[54,29]], opts(s+6, PAL.cat, 'solid'));
+    rc.polygon([[56,28],[61,24],[62,30]], opts(s+7, PAL.cat, 'solid'));
+    rc.curve([[16,36],[9,42],[12,47]], opts(s+8, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    rc.line(50, 31, 53, 32, opts(s+10, null, null, {stroke:PAPER, strokeWidth:1.2, roughness:.8}));
+    rc.line(57, 31, 60, 32, opts(s+11, null, null, {stroke:PAPER, strokeWidth:1.2, roughness:.8}));
+    rc.line(44, 26, 46, 40, opts(s+12, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
   } else {
     const step = pose === 'walk1';
     // legs
@@ -516,6 +538,8 @@ const SPR = {
            walk1:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk1')),
            stalk0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk0')),
            stalk1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk1')),
+           hunch0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'hunch0')),
+           hunch1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'hunch1')),
            climb:  makeSprite(48,72,(r,g,s)=>drawCat(r,g,s,'climb')),
            scared: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'scared')),
            lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
@@ -816,6 +840,16 @@ const CAT_MUSINGS = [
   "Slunce zapadá. Načase jít domů.",
   "Mohl bych běžet. Ale nebudu."
 ];
+// grumbling in the rain
+const CAT_RAIN_LINES = [
+  "Fuj. Prší.",
+  "Já a voda. Odvěké nedorozumění.",
+  "Mokrý kožich. Nádhera.",
+  "Kdo tohle objednal?",
+  "Domů. Hned.",
+  "Kaluže všude. To si dělá srandu.",
+  "Kapka. Další. Nesnáším to."
+];
 
 // ===================== ENTITIES =====================
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -939,6 +973,17 @@ let weatherLevel = pickWeather();
 let weatherTimer = 30 + Math.random() * 40;
 const RAIN = [];       // screen-space raindrops
 let flash = 0, boltPts = null, lightningCooldown = 6 + Math.random() * 10;
+let prevRainy = false;
+// puddles that grow while it rains (level >= 2) and dry out afterwards
+const puddles = [];
+for (let i = 0; i < 22; i++){
+  for (let k = 0; k < 12; k++){
+    const x = 70 + Math.random() * (WORLD_W - 140), y = 70 + Math.random() * (WORLD_H - 140);
+    if (!colliders.some(c => x > c.x-16 && x < c.x+c.w+16 && y > c.y-16 && y < c.y+c.h+16)){
+      puddles.push({ x, y, size: 0, max: 0.55 + Math.random() * 0.5 }); break;
+    }
+  }
+}
 
 let bubbles = [];   // {ent, text, t, dur}
 function say(ent, text, dur){
@@ -1177,6 +1222,16 @@ function update(dt){
     if (Math.random() < 0.5) weatherLevel = clamp(weatherLevel + (Math.random() < 0.5 ? -1 : 1), 0, 3);
     weatherTimer = 25 + Math.random() * 35;
   }
+  const nowRainy = weatherLevel >= 2;
+  // the cat grumbles the moment real rain starts
+  if (nowRainy && !prevRainy && gameState === 'play' && !bubbles.some(b => b.ent === cat))
+    say(cat, CAT_RAIN_LINES[Math.floor(Math.random() * CAT_RAIN_LINES.length)], 2.8);
+  prevRainy = nowRainy;
+  // puddles grow while it rains, dry out otherwise
+  for (const pd of puddles){
+    const tgt = nowRainy ? pd.max * (weatherLevel === 3 ? 1 : 0.7) : 0;
+    pd.size += (tgt - pd.size) * Math.min(1, dt * (nowRainy ? 0.18 : 0.32));
+  }
   const wantRain = [0, 40, 95, 170][weatherLevel];
   while (RAIN.length < wantRain)
     RAIN.push({ x: Math.random() * (VW + 240) - 120, y: Math.random() * VH,
@@ -1237,7 +1292,10 @@ function update(dt){
     if (catChatCooldown <= 0 && !bubbles.some(b => b.ent === cat)){
       const noisyFolks = peds.some(p => dist(p, cat) < 340) ||
         (dest.state !== 'away' && dist(dest, cat) < 340);
-      const pool = (noisyFolks && Math.random() < 0.6) ? CAT_STREET_LINES : CAT_MUSINGS;
+      let pool;
+      if (weatherLevel >= 2 && Math.random() < 0.7) pool = CAT_RAIN_LINES;
+      else if (noisyFolks && Math.random() < 0.6) pool = CAT_STREET_LINES;
+      else pool = CAT_MUSINGS;
       say(cat, pool[Math.floor(Math.random() * pool.length)], 2.8);
       catChatCooldown = 18 + Math.random() * 16;
     }
@@ -1458,11 +1516,12 @@ function update(dt){
       if (cat.state === 'scared'){ cat.pose = 'scared'; }
       else {
         cat.animT += dt;
-        const gait = cat.state === 'approach' ? 'stalk' : 'walk';
+        const gait = cat.state === 'approach' ? 'stalk'
+                   : (weatherLevel >= 2 && cat.state === 'wander') ? 'hunch' : 'walk';
         cat.pose = gait + ((Math.floor(cat.animT / 0.22) % 2) ? '1' : '0');
       }
     } else if (cat.state === 'wander'){
-      cat.pose = 'walk0';
+      cat.pose = (weatherLevel >= 2) ? 'hunch0' : 'walk0';
     }
   }
   // jump up into / down from the canopy (drawn height above the ground spot)
@@ -1742,6 +1801,21 @@ function drawHudArrow(variant){
   ctx.restore();
 }
 
+function drawPuddles(){
+  for (const p of puddles){
+    if (p.size < 0.04) continue;
+    const sx = p.x - camX, sy = p.y - camY;
+    if (sx < -60 || sx > VW + 60 || sy < -50 || sy > VH + 50) continue;
+    const rw = 8 + 26 * p.size, rh = rw * 0.42, a = Math.min(1, p.size * 1.6);
+    ctx.save();
+    ctx.globalAlpha = 0.3 * a; ctx.fillStyle = '#8fa7c4';
+    ctx.beginPath(); ctx.ellipse(sx, sy, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.25 * a; ctx.fillStyle = '#dce7f2';
+    ctx.beginPath(); ctx.ellipse(sx - rw*0.24, sy - rh*0.22, rw*0.42, rh*0.34, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
 function drawWeather(){
   // overcast gloom deepens with the weather level
   const gloom = [0, 0.1, 0.22, 0.38][weatherLevel];
@@ -1811,6 +1885,7 @@ function render(now){
   // marks the cat left on the grass (flat decals, under everything)
   marks.forEach(m => drawSprite(SPR.mark[m.kind], variant,
     { x: m.x, y: m.y }, SPR.mark[m.kind].h * 0.5));
+  drawPuddles();
 
   // shadows
   shadow(player, 16, 5); shadow(cat, 18, 5);
