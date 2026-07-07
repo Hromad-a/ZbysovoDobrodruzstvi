@@ -344,17 +344,18 @@ function drawHedgehog(rc, g, s, pose){
 }
 
 function drawFaceInWindow(rc, g, s, kind){
-  // small lit window with the awaited person peeking out
-  rc.rectangle(2, 2, 22, 26, opts(s, PAL.winLit, 'solid', {strokeWidth:1.8, roughness:1.4}));
-  rc.ellipse(13, 18, 13, 16, opts(s+1, PAL.skin, 'solid', {roughness:1.2}));
+  // head & shoulders that sit INSIDE an existing window (no own frame) —
+  // sprite is 20x24, exactly the size of a building window
+  rc.polygon([[1,24],[3,17],[17,17],[19,24]], opts(s+3, '#8a8f9a', 'hachure', {hachureGap:3, fillWeight:1.8, strokeWidth:1.4}));
+  rc.ellipse(10, 11, 12, 14, opts(s+1, PAL.skin, 'solid', {roughness:1.2}));
   if (kind === 'woman'){
-    rc.arc(13, 15, 16, 15, Math.PI * 0.95, Math.PI * 2.08, true,
-      opts(s+2, PAL.hairW, 'hachure', {hachureGap:2.4, fillWeight:2}));
+    rc.arc(10, 9, 15, 14, Math.PI * 0.95, Math.PI * 2.08, true,
+      opts(s+2, PAL.hairW, 'hachure', {hachureGap:2.2, fillWeight:2}));
   } else {
-    rc.ellipse(13, 10, 13, 7, opts(s+2, PAL.hairM, 'hachure', {hachureGap:2, fillWeight:2}));
+    rc.ellipse(10, 5, 13, 8, opts(s+2, PAL.hairM, 'hachure', {hachureGap:2, fillWeight:2}));
   }
-  rc.line(9, 17, 11, 17, opts(s+3, null, null, {strokeWidth:1.3, roughness:.8}));
-  rc.line(15, 17, 17, 17, opts(s+4, null, null, {strokeWidth:1.3, roughness:.8}));
+  rc.line(6, 11, 8, 11, opts(s+4, null, null, {strokeWidth:1.3, roughness:.8}));
+  rc.line(12, 11, 14, 11, opts(s+5, null, null, {strokeWidth:1.3, roughness:.8}));
 }
 
 function drawTram(rc, g, s){
@@ -410,13 +411,12 @@ function drawCarSprite(rc, g, s, col){
 }
 
 function drawCatInWindow(rc, g, s){
-  // a cat silhouette peeking over a lit windowsill
-  rc.rectangle(2, 4, 22, 24, opts(s, PAL.winLit, 'solid', {strokeWidth:1.8, roughness:1.4}));
-  rc.ellipse(13, 21, 16, 15, opts(s+1, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.4}));
-  rc.polygon([[6,15],[7,6],[13,14]], opts(s+2, PAL.cat, 'solid'));
-  rc.polygon([[14,14],[20,6],[21,16]], opts(s+3, PAL.cat, 'solid'));
-  rc.circle(10, 20, 2, opts(s+4, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
-  rc.circle(17, 20, 2, opts(s+5, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+  // a cat sitting on the sill INSIDE an existing window (20x24, no own frame)
+  rc.ellipse(10, 17, 15, 13, opts(s+1, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.4}));
+  rc.polygon([[4,12],[5,3],[10,11]], opts(s+2, PAL.cat, 'solid'));
+  rc.polygon([[11,11],[16,3],[17,13]], opts(s+3, PAL.cat, 'solid'));
+  rc.circle(7, 16, 1.8, opts(s+4, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+  rc.circle(13, 16, 1.8, opts(s+5, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
 }
 
 function drawPee(rc, g, s){
@@ -525,9 +525,9 @@ const SPR = {
            v1: makeSprite(52,116,(r,g,s)=>drawTree(r,g,s,1)),
            v2: makeSprite(64, 84,(r,g,s)=>drawTree(r,g,s,2)) },
   tram:  { idle:  makeSprite(230,80,(r,g,s)=>drawTram(r,g,s)) },
-  face:  { woman: makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'woman')),
-           man:   makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'man')),
-           cat:   makeSprite(26,32,(r,g,s)=>drawCatInWindow(r,g,s)) },
+  face:  { woman: makeSprite(20,24,(r,g,s)=>drawFaceInWindow(r,g,s,'woman')),
+           man:   makeSprite(20,24,(r,g,s)=>drawFaceInWindow(r,g,s,'man')),
+           cat:   makeSprite(20,24,(r,g,s)=>drawCatInWindow(r,g,s)) },
   mark:  { pee:  makeSprite(16,12,(r,g,s)=>drawPee(r,g,s)),
            poop: makeSprite(18,14,(r,g,s)=>drawPoop(r,g,s)) },
   worm:  { idle:  makeSprite(26,16,(r,g,s)=>drawWormSprite(r,g,s)) },
@@ -863,6 +863,13 @@ const tram   = { x: WORLD_W + 160, y: 756, state: 'away', t: 0, vx: 0,
 let arrivalMode = Math.random() < 0.5 ? 'tram' : 'window';
 const PEEK = { x: 1812, y: 166 };            // their window (building at 1650,100)
 const peek = { visible: false, t: 8, dur: 0 };
+// snap the peek to an actual window of the NE building so it lines up on the grid
+{ let best = null, bd = 1e9;
+  for (const w of ALLWINS){
+    const d = Math.hypot(w[0] - 1812, w[1] - 165);
+    if (w[0] > 1660 && w[1] < 250 && d < bd){ bd = d; best = w; }
+  }
+  if (best){ PEEK.x = best[0]; PEEK.y = best[1]; } }
 const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  state: 'wander', orbitA: Math.random() * 6.28, orbitR: 90,
                  sniffT: 0, target: null, stateT: 0, script: null,
@@ -925,6 +932,13 @@ let winTimer = 4 + Math.random() * 6;
 // little marks the cat leaves on the grass
 const marks = [];      // {x, y, kind:'pee'|'poop'}
 let catChatCooldown = 14 + Math.random() * 12;
+
+// weather: 0 clear · 1 light rain · 2 rain · 3 storm (may drift over the walk)
+function pickWeather(){ const r = Math.random(); return r < 0.55 ? 0 : r < 0.8 ? 1 : r < 0.93 ? 2 : 3; }
+let weatherLevel = pickWeather();
+let weatherTimer = 30 + Math.random() * 40;
+const RAIN = [];       // screen-space raindrops
+let flash = 0, boltPts = null, lightningCooldown = 6 + Math.random() * 10;
 
 let bubbles = [];   // {ent, text, t, dur}
 function say(ent, text, dur){
@@ -1004,10 +1018,10 @@ function update(dt){
     if (player.special){
       player.specialT -= dt;
       if (player.specialT <= 0){ player.special = null; player.idleT = 0; }
-    } else if (player.idleT > 3 && Math.random() < dt * 0.5){
+    } else if (player.idleT > 2 && Math.random() < dt * 0.8){
       if (chosen === 'man'){
         player.special = 'phone'; player.specialT = 3 + Math.random() * 3;
-      } else if (dist(player, cat) < 64){
+      } else if (dist(player, cat) < 95){
         player.special = 'pet'; player.specialT = 3 + Math.random() * 2;
       }
     }
@@ -1156,6 +1170,35 @@ function update(dt){
   for (let i = winFolks.length - 1; i >= 0; i--){
     if ((winFolks[i].t += dt) > winFolks[i].dur) winFolks.splice(i, 1);
   }
+
+  // ---- weather ----
+  weatherTimer -= dt;
+  if (weatherTimer <= 0){
+    if (Math.random() < 0.5) weatherLevel = clamp(weatherLevel + (Math.random() < 0.5 ? -1 : 1), 0, 3);
+    weatherTimer = 25 + Math.random() * 35;
+  }
+  const wantRain = [0, 40, 95, 170][weatherLevel];
+  while (RAIN.length < wantRain)
+    RAIN.push({ x: Math.random() * (VW + 240) - 120, y: Math.random() * VH,
+                sp: 620 + Math.random() * 380 + weatherLevel * 90,
+                len: 7 + Math.random() * (6 + weatherLevel * 4),
+                wind: -30 - weatherLevel * 35 });
+  if (RAIN.length > wantRain) RAIN.length = wantRain;
+  for (const d of RAIN){
+    d.y += d.sp * dt; d.x += d.wind * dt;
+    if (d.y > VH + 10){ d.y = -10; d.x = Math.random() * (VW + 240) - 120; }
+  }
+  if (weatherLevel >= 3){                        // lightning in a storm
+    lightningCooldown -= dt;
+    if (lightningCooldown <= 0){
+      flash = 1; lightningCooldown = 5 + Math.random() * 13;
+      const pts = []; let bx = 100 + Math.random() * Math.max(1, VW - 200), by = 0;
+      pts.push([bx, by]);
+      while (by < VH * 0.55){ by += 22 + Math.random() * 30; bx += (Math.random() - 0.5) * 60; pts.push([bx, by]); }
+      boltPts = pts;
+    }
+  }
+  if (flash > 0) flash = Math.max(0, flash - dt * 2.8);
 
   // ---- cat FSM ----
   catTalkCooldown -= dt;
@@ -1699,6 +1742,35 @@ function drawHudArrow(variant){
   ctx.restore();
 }
 
+function drawWeather(){
+  // overcast gloom deepens with the weather level
+  const gloom = [0, 0.1, 0.22, 0.38][weatherLevel];
+  if (gloom > 0){
+    ctx.save(); ctx.globalAlpha = gloom;
+    ctx.fillStyle = '#3a4157'; ctx.fillRect(0, 0, VW, VH); ctx.restore();
+  }
+  if (RAIN.length){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(205,214,230,0.5)'; ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    for (const d of RAIN){ ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.wind * 0.02 - 1, d.y + d.len); }
+    ctx.stroke(); ctx.restore();
+  }
+  if (flash > 0){                                // lightning
+    ctx.save();
+    ctx.globalAlpha = flash * 0.55; ctx.fillStyle = '#f6f0d8';
+    ctx.fillRect(0, 0, VW, VH);
+    if (boltPts && flash > 0.45){
+      ctx.globalAlpha = flash; ctx.strokeStyle = '#fff8e0'; ctx.lineWidth = 2.6;
+      ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(boltPts[0][0], boltPts[0][1]);
+      for (const p of boltPts) ctx.lineTo(p[0], p[1]);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 function drawDogLeashes(){
   for (const p of peds){
     if (!p.dog || !p.dog.leashed) continue;
@@ -1796,15 +1868,17 @@ function render(now){
   ents.sort((a, b) => a.y - b.y);
   ents.forEach(e => e.draw());
 
-  // the awaited person peeking from their window (window arrival mode)
+  // the awaited person peeking from their window (window arrival mode) —
+  // centred on the actual window (anchorH = half height)
   if (arrivalMode === 'window' && peek.visible && dest.kind)
-    drawSprite(SPR.face[dest.kind], variant, { x: PEEK.x, y: PEEK.y, flip: false });
+    drawSprite(SPR.face[dest.kind], variant, { x: PEEK.x, y: PEEK.y }, SPR.face[dest.kind].h / 2);
 
-  // ambient neighbours & cats at their windows
+  // ambient neighbours & cats framed in their windows
   winFolks.forEach(f => drawSprite(SPR.face[f.type], variant,
-    { x: f.x, y: f.y + 16, flip: f.flip }));
+    { x: f.x, y: f.y, flip: f.flip }, SPR.face[f.type].h / 2));
 
   drawNight();
+  drawWeather();
   drawBubbles(variant);
   drawHudArrow(variant);
   drawJoystick();
