@@ -192,11 +192,11 @@ function drawMan(rc, g, s, pose){
   if (kneel){
     rc.line(40, 58+oy, 60, 92, opts(s+4, null, null, {strokeWidth:3.4}));
   } else if (pose === 'phone'){
-    // both forearms up, phone held in front
-    rc.line(24, 56, 28, 72, opts(s+4, null, null, {strokeWidth:3.4}));
-    rc.line(40, 56, 36, 72, opts(s+5, null, null, {strokeWidth:3.4}));
-    rc.rectangle(27, 65, 9, 12, opts(s+13, '#b7c9e0', 'solid', {strokeWidth:1.6, roughness:1}));
-    rc.line(29, 68, 34, 68, opts(s+14, null, null, {stroke:'#eef6ff', strokeWidth:1.2, roughness:.8}));
+    // one arm raised, holding the phone out to the side
+    rc.line(24, 56, 16, 84, opts(s+4, null, null, {strokeWidth:3.4}));   // other arm relaxed down
+    rc.line(40, 58, 52, 64, opts(s+5, null, null, {strokeWidth:3.4}));   // arm out to the side
+    rc.rectangle(51, 58, 9, 13, opts(s+13, '#b7c9e0', 'solid', {strokeWidth:1.6, roughness:1}));
+    rc.line(53, 61, 58, 61, opts(s+14, null, null, {stroke:'#eef6ff', strokeWidth:1.2, roughness:.8}));
   } else {
     rc.line(24, 56, 15, 82, opts(s+4, null, null, {strokeWidth:3.4}));
     rc.line(40, 56, 48, 80, opts(s+5, null, null, {strokeWidth:3.4}));
@@ -601,12 +601,19 @@ const LAMPS = [ [300,690],[700,690],[1100,690],[1520,690],[1880,690],
                 [500,845],[900,845],[1460,845],[1780,845],
                 [1250,300],[1250,1010],[1420,480],[1420,1200],
                 [450,580],[720,470] ];
-// big green areas around the building clusters [cx,cy,width,height]
+// big green areas around the building clusters [cx,cy,width,height] (boxes)
 const GRASS = [ [1660,430,640,360],   // top-right (B2)
                 [1650,1040,700,380],  // bottom-right (B5)
                 [560,1060,820,380],   // bottom (B3/B4)
                 [150,560,360,400],    // left strip by the park
                 [1080,340,360,260] ]; // top-center
+// boxy grass courtyards under the building clusters (were pink pavement)
+const COURTYARDS = [
+  [[60,40],[760,30],[780,300],[70,320]],
+  [[1560,60],[1960,70],[1950,420],[1580,400]],
+  [[60,900],[1000,920],[1010,1380],[70,1390]],
+  [[1540,1060],[1950,1080],[1940,1400],[1550,1390]],
+];
 
 BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
 CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
@@ -629,19 +636,12 @@ function drawWorld(rc, g, s){
     }
   }
 
-  // pink pavement blobs — courtyards; fixed seeds like the roads, another
-  // big hachure field that flickered too much when boiling
-  rc.polygon([[60,40],[760,30],[780,300],[70,320]],
-    opts(9001, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
-  rc.polygon([[1560,60],[1960,70],[1950,420],[1580,400]],
-    opts(9002, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
-  rc.polygon([[60,900],[1000,920],[1010,1380],[70,1390]],
-    opts(9003, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
-  rc.polygon([[1540,1060],[1950,1080],[1940,1400],[1550,1390]],
-    opts(9004, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+  // boxy grass courtyards under the building clusters (fixed seeds, crooked edges)
+  COURTYARDS.forEach((q, i) => rc.polygon(q,
+    opts(9001+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.9, roughness:2.7, bowing:3})));
 
-  // park
-  rc.polygon(PARK, opts(s+5, PAL.green, 'zigzag', {hachureGap:8, fillWeight:2, strokeWidth:2}));
+  // park (crooked outline)
+  rc.polygon(PARK, opts(s+5, PAL.green, 'zigzag', {hachureGap:8, fillWeight:2, strokeWidth:2, roughness:2.8, bowing:3}));
   // park path
   rc.curve([[320,600],[520,520],[700,480],[860,540]],
     opts(s+6, null, null, {stroke:PAL.pink, strokeWidth:10, roughness:2.6}));
@@ -650,40 +650,40 @@ function drawWorld(rc, g, s){
   // so nothing green sprouts straight out of bare paper or pavement. Drawn
   // before the roads/buildings (fixed seeds, no boil) so they never cover a
   // road or a facade — those paint over any overlap.
-  GRASS.forEach((gr, i) => rc.ellipse(gr[0], gr[1], gr[2], gr[3],
-    opts(9200+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
+  GRASS.forEach((gr, i) => rc.rectangle(gr[0]-gr[2]/2, gr[1]-gr[3]/2, gr[2], gr[3],
+    opts(9200+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:1.8, strokeWidth:1.9, roughness:2.6, bowing:2.4})));
   TREES.forEach((t, i) => rc.ellipse(t[0], t[1]+8, 92, 50,
     opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
 
   // roads — fixed seeds (not derived from s) so they stay identical in both
   // boil variants; a large flickering hachure field was too distracting
   rc.rectangle(0, HROAD.y, WORLD_W, HROAD.h,
-    opts(9007, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
+    opts(9007, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2.2, roughness:2.9, bowing:1.6}));
   rc.rectangle(VROAD.x, 0, VROAD.w, WORLD_H,
-    opts(9008, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
+    opts(9008, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2.2, roughness:2.9, bowing:1.6}));
   // dashed centre lines
   for (let x = 30; x < WORLD_W - 40; x += 90){
     if (x > VROAD.x - 40 && x < VROAD.x + VROAD.w) continue;
     rc.line(x, HROAD.y + 60, x + 42, HROAD.y + 60,
-      opts(9009+x, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
+      opts(9009+x, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.9}));
   }
   for (let y = 30; y < WORLD_H - 40; y += 90){
     if (y > HROAD.y - 40 && y < HROAD.y + HROAD.h) continue;
     rc.line(VROAD.x + 55, y, VROAD.x + 55, y + 42,
-      opts(9011+y, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
+      opts(9011+y, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.9}));
   }
   // tram rails along the lower lane + stop sign at the terminus
-  rc.line(0, 744, WORLD_W, 744, opts(9030, null, null, {stroke:'#8f97a6', strokeWidth:2, roughness:1.2}));
-  rc.line(0, 776, WORLD_W, 776, opts(9031, null, null, {stroke:'#8f97a6', strokeWidth:2, roughness:1.2}));
+  rc.line(0, 744, WORLD_W, 744, opts(9030, null, null, {stroke:'#8f97a6', strokeWidth:2, roughness:2.4, bowing:1.4}));
+  rc.line(0, 776, WORLD_W, 776, opts(9031, null, null, {stroke:'#8f97a6', strokeWidth:2, roughness:2.4, bowing:1.4}));
   rc.line(1846, 700, 1846, 664, opts(9032, null, null, {strokeWidth:3}));
   rc.rectangle(1838, 650, 16, 14, opts(9033, PAL.winLit, 'solid', {strokeWidth:1.6, roughness:1.4}));
 
   // crosswalks (zebra)
   for (let i = 0; i < 6; i++){
     rc.rectangle(1090 + i*2, HROAD.y + 8 + i*18, 60, 12,
-      opts(9013+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
+      opts(9013+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:2.6, bowing:2}));
     rc.rectangle(VROAD.x + 6 + i*17, 560 + (i%2)*3, 12, 56,
-      opts(9020+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
+      opts(9020+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:2.6, bowing:2}));
   }
 
   // buildings — paneláky with misaligned windows
@@ -866,9 +866,9 @@ function inPoly(px, py, poly){
 }
 function isGreen(x, y){
   if (inPoly(x, y, PARK)) return true;
+  for (const q of COURTYARDS) if (inPoly(x, y, q)) return true;
   for (const gr of GRASS){
-    const dx = (x - gr[0]) / (gr[2] / 2), dy = (y - gr[1]) / (gr[3] / 2);
-    if (dx * dx + dy * dy <= 1) return true;
+    if (Math.abs(x - gr[0]) < gr[2] / 2 && Math.abs(y - gr[1]) < gr[3] / 2) return true;
   }
   return false;
 }
@@ -931,10 +931,10 @@ const peds = [];
 function spawnPed(x, y, withDog, leashed){
   const variant = Math.floor(Math.random() * PED_PALS.length);
   const ped = { x, y, variant, r: 12, dir: Math.random() * 6.28, speed: 38 + Math.random() * 26,
-                moveT: 2 + Math.random() * 3, animT: 0, pose: 'walk0', flip: false, dog: null };
+                moveT: 2 + Math.random() * 3, animT: 0, pose: 'walk0', flip: false, dog: null, pullT: 0 };
   if (withDog){
     ped.dog = { type: DOG_TYPES[Math.floor(Math.random() * DOG_TYPES.length)],
-                scale: 0.7 + Math.random() * 0.6, leashed, r: 8,
+                scale: 0.7 + Math.random() * 0.6, leashed, r: 8, isDog: true, barkT: 0,
                 x: x + 24, y: y + 12, wx: x, wy: y, moveT: 1 + Math.random() * 2,
                 animT: 0, pose: 'walk0', flip: false };
   }
@@ -992,13 +992,91 @@ function say(ent, text, dur){
 }
 let catTalkCooldown = 3;
 
+// ===================== AUDIO (procedural, no files) =====================
+let AC = null, masterGain = null, rainGain = null, audioOn = false, muted = false;
+function initAudio(){
+  if (AC){ if (AC.state === 'suspended') AC.resume(); return; }
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
+  masterGain = AC.createGain(); masterGain.gain.value = 0.5; masterGain.connect(AC.destination);
+  // continuous rain bed: looping filtered noise whose gain follows the weather
+  const buf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = 0.5;
+  rainGain = AC.createGain(); rainGain.gain.value = 0;
+  src.connect(lp); lp.connect(rainGain); rainGain.connect(masterGain);
+  src.start();
+  audioOn = true;
+}
+function updateAudio(){
+  if (!audioOn) return;
+  masterGain.gain.setTargetAtTime(muted ? 0 : 0.5, AC.currentTime, 0.05);
+  rainGain.gain.setTargetAtTime(([0, 0.05, 0.13, 0.22][weatherLevel] || 0), AC.currentTime, 0.6);
+}
+function blip(type, f0, f1, dur, vol, filter){
+  if (!audioOn || muted) return;
+  const t = AC.currentTime;
+  const o = AC.createOscillator(); o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.7);
+  let node = o;
+  if (filter){ const bp = AC.createBiquadFilter(); bp.type = filter.type; bp.frequency.value = filter.f; bp.Q.value = filter.q || 1; o.connect(bp); node = bp; }
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  node.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function noiseBurst(dur, filterType, freq, q, vol, atk){
+  if (!audioOn || muted) return;
+  const t = AC.currentTime;
+  const buf = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const f = AC.createBiquadFilter(); f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + atk);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  src.connect(f); f.connect(g); g.connect(masterGain);
+  src.start(t); src.stop(t + dur + 0.05);
+}
+function playMeow(){ blip('sawtooth', 520, 430, 0.42, 0.16, {type:'bandpass', f:900, q:5}); }
+function playBark(){ blip('square', 210, 120, 0.16, 0.12, {type:'lowpass', f:1100}); }
+function playHiss(){ noiseBurst(0.4, 'bandpass', 5000, 0.8, 0.11, 0.03); }
+function playThunder(){ noiseBurst(1.3, 'lowpass', 180, 1, 0.5, 0.06); }
+function playPurr(dur){
+  if (!audioOn || muted) return;
+  const t = AC.currentTime;
+  const o = AC.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 55;
+  const lfo = AC.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 24;
+  const lfoG = AC.createGain(); lfoG.gain.value = 0.06;
+  const g = AC.createGain(); g.gain.value = 0.0001;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320;
+  lfo.connect(lfoG); lfoG.connect(g.gain);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.09, t + 0.4);
+  g.gain.setTargetAtTime(0.0001, t + dur, 0.5);
+  o.connect(lp); lp.connect(g); g.connect(masterGain);
+  o.start(t); lfo.start(t); o.stop(t + dur + 2); lfo.stop(t + dur + 2);
+}
+
 // ===================== INPUT =====================
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'm') muted = !muted;
+  keys[k] = true; initAudio();
+});
 window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
 
 const joy = { active: false, ox: 0, oy: 0, dx: 0, dy: 0, id: null };
 cvs.addEventListener('pointerdown', e => {
+  initAudio();
+  if (e.clientX > VW - 52 && e.clientY < 52){ muted = !muted; return; }   // mute button corner
   joy.active = true; joy.id = e.pointerId;
   joy.ox = e.clientX; joy.oy = e.clientY; joy.dx = joy.dy = 0;
   cvs.setPointerCapture(e.pointerId);
@@ -1153,13 +1231,25 @@ function update(dt){
 
   // ---- other people & their dogs ----
   for (const p of peds){
+    const dg = p.dog;
+    const dogNearCat = dg && gameState !== 'done' && dist(dg, cat) < 150;
+    // the owner notices the fuss and, after a moment, hauls the dog off
+    if (dogNearCat) p.pullT += dt; else p.pullT = Math.max(0, p.pullT - dt * 0.6);
+    const pulling = p.pullT > 2.2 && dg && dist(dg, cat) < 240;
+
     p.moveT -= dt;
     if (p.moveT <= 0){
       p.dir = Math.random() * Math.PI * 2;
       p.moveT = 2 + Math.random() * 4;
       if (Math.random() < 0.2) p.moveT = -(1 + Math.random() * 2);  // pause
     }
-    if (p.moveT > 0){
+    if (pulling){                                 // stride away from the cat, tugging the dog
+      const ax = p.x - cat.x, ay = p.y - cat.y, al = Math.hypot(ax, ay) || 1;
+      p.x += ax / al * p.speed * 1.5 * dt; p.y += ay / al * p.speed * 1.5 * dt;
+      p.flip = ax < 0; p.animT += dt;
+      p.pose = (Math.floor(p.animT / 0.2) % 2) ? 'walk1' : 'walk0';
+      collide(p);
+    } else if (p.moveT > 0){
       p.x += Math.cos(p.dir) * p.speed * dt;
       p.y += Math.sin(p.dir) * p.speed * dt;
       p.flip = Math.cos(p.dir) < 0;
@@ -1170,24 +1260,27 @@ function update(dt){
         p.dir += Math.PI;                         // turn back at the edges
     } else p.pose = 'walk0';
 
-    if (p.dog){
-      const dg = p.dog;
-      let dtx, dty;
-      if (dg.leashed){                            // trails just behind the owner
-        dtx = p.x + (p.flip ? 24 : -24); dty = p.y + 14;
-      } else {                                    // roams loosely around the owner
-        dg.moveT -= dt;
-        if (dg.moveT <= 0){
-          dg.wx = p.x + (Math.random() * 200 - 100);
-          dg.wy = p.y + (Math.random() * 200 - 100);
-          dg.moveT = 1.5 + Math.random() * 2.5;
+    if (dg){
+      // barking at the cat when close (unless being hauled off)
+      if (dogNearCat && !pulling){
+        dg.flip = (cat.x - dg.x) < 0;
+        dg.barkT -= dt;
+        if (dg.barkT <= 0 && gameState === 'play'){
+          say(dg, 'Haf!', 0.8); playBark(); dg.barkT = 0.7 + Math.random() * 0.7;
         }
+      }
+      let dtx, dty;
+      if (pulling){ dtx = p.x + (p.flip ? 22 : -22); dty = p.y + 12; }   // heeled to the owner
+      else if (dogNearCat){ dtx = cat.x; dty = cat.y; }                  // lunge toward the cat
+      else if (dg.leashed){ dtx = p.x + (p.flip ? 24 : -24); dty = p.y + 14; }
+      else {
+        dg.moveT -= dt;
+        if (dg.moveT <= 0){ dg.wx = p.x + (Math.random()*200-100); dg.wy = p.y + (Math.random()*200-100); dg.moveT = 1.5 + Math.random()*2.5; }
         dtx = dg.wx; dty = dg.wy;
       }
       const dd = Math.hypot(dtx - dg.x, dty - dg.y) || 1;
-      const near = dg.leashed ? 22 : 14;
-      if (dd > near){
-        const dsp = dg.leashed ? 75 : 58;
+      if (dd > 14){
+        const dsp = pulling ? 92 : dogNearCat ? 88 : (dg.leashed ? 75 : 58);
         dg.x += (dtx - dg.x) / dd * dsp * dt;
         dg.y += (dty - dg.y) / dd * dsp * dt;
         dg.flip = (dtx - dg.x) < 0;
@@ -1195,6 +1288,11 @@ function update(dt){
         dg.pose = (Math.floor(dg.animT / 0.2) % 2) ? 'walk1' : 'walk0';
         collide(dg);
       } else dg.pose = 'walk0';
+      // a leashed dog can't stray far from the owner, even while straining
+      if (dg.leashed){
+        const od = Math.hypot(dg.x - p.x, dg.y - p.y), maxLead = pulling ? 30 : 54;
+        if (od > maxLead){ dg.x = p.x + (dg.x - p.x) / od * maxLead; dg.y = p.y + (dg.y - p.y) / od * maxLead; }
+      }
     }
   }
 
@@ -1251,6 +1349,7 @@ function update(dt){
       pts.push([bx, by]);
       while (by < VH * 0.55){ by += 22 + Math.random() * 30; bx += (Math.random() - 0.5) * 60; pts.push([bx, by]); }
       boltPts = pts;
+      setTimeout(playThunder, 150 + Math.random() * 500);   // thunder trails the flash
     }
   }
   if (flash > 0) flash = Math.max(0, flash - dt * 2.8);
@@ -1268,7 +1367,7 @@ function update(dt){
       if (cat.target) cat.target.paused = false;
       cat.script = null; cat.wormTarget = null;
       cat.state = 'scared'; cat.scaredOf = nd.dog; cat.stateT = 0;
-      say(cat, 'Fss!', 1.3);
+      say(cat, 'Fss!', 1.3); playHiss();
     }
   }
 
@@ -1319,7 +1418,7 @@ function update(dt){
       for (const h of hedgehogs){
         if (h.cooldown <= 0 && dist(cat, h) < 95){
           cat.state = 'approach'; cat.target = h; cat.stateT = 0;
-          say(cat, '!', 1.1);
+          say(cat, '!', 1.1); playMeow();
           break;
         }
       }
@@ -1501,7 +1600,7 @@ function update(dt){
       cat.state = 'petted'; cat.pose = 'lay'; cat.stateT = 0;
       catTarget = null; catSpeed = 0;
       dest.pose = 'pet';
-      say(cat, 'Prrrr.', 3);
+      say(cat, 'Prrrr.', 3); playPurr(3.5);
       setTimeout(showEnd, 2200);
     }
   }
@@ -1670,7 +1769,7 @@ function wrapText(text, maxW){
 function drawBubbles(variant){
   for (const b of bubbles){
     const e = b.ent;
-    const top = e === cat ? 42 + cat.zOff : hedgehogs.includes(e) ? 42 : 116;
+    const top = e.isDog ? 30 : e === cat ? 42 + cat.zOff : hedgehogs.includes(e) ? 42 : 116;
     const lines = wrapText(b.text, 190);
     const lw = Math.max(...lines.map(l => ctx.measureText(l).width));
     const bw = lw + 24, bh = lines.length * 19 + 16;
@@ -1858,6 +1957,25 @@ function drawDogLeashes(){
   }
 }
 
+function drawMuteIcon(){
+  const x = VW - 30, y = 26;
+  ctx.save();
+  // soft paper chip so the control is findable over any background
+  ctx.globalAlpha = 0.7; ctx.fillStyle = '#fdf8ea';
+  ctx.beginPath(); ctx.arc(x + 2, y, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.85; ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x-8,y-4); ctx.lineTo(x-3,y-4); ctx.lineTo(x+2,y-9);
+  ctx.lineTo(x+2,y+9); ctx.lineTo(x-3,y+4); ctx.lineTo(x-8,y+4); ctx.closePath(); ctx.fill();
+  if (muted){
+    ctx.beginPath(); ctx.moveTo(x+6,y-6); ctx.lineTo(x+14,y+6); ctx.moveTo(x+14,y-6); ctx.lineTo(x+6,y+6); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(x+5,y,5,-0.6,0.6); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x+5,y,9,-0.6,0.6); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawJoystick(){
   if (!joy.active) return;
   ctx.save();
@@ -1957,6 +2075,7 @@ function render(now){
   drawBubbles(variant);
   drawHudArrow(variant);
   drawJoystick();
+  drawMuteIcon();
 
   // paper grain
   if (!grainPattern) grainPattern = ctx.createPattern(grain, 'repeat');
@@ -1975,6 +2094,7 @@ function loop(now){
   last = now;
   update(dt);
   render(now);
+  updateAudio();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -1997,7 +2117,9 @@ function pick(kind){
   dest.kind = kind === 'woman' ? 'man' : 'woman';
   document.getElementById('startScreen').classList.add('hidden');
   gameState = 'play';
+  initAudio();
   say(cat, 'Mňau. Tak jdem.', 2.4);
+  playMeow();
 }
 document.getElementById('pickWoman').addEventListener('click', () => pick('woman'));
 document.getElementById('pickMan').addEventListener('click', () => pick('man'));
