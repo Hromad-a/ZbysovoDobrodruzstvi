@@ -409,6 +409,25 @@ function drawCarSprite(rc, g, s, col){
   rc.circle(74, 40, 15, opts(s+3, INK, 'solid', {roughness:1.4}));
 }
 
+function drawCatInWindow(rc, g, s){
+  // a cat silhouette peeking over a lit windowsill
+  rc.rectangle(2, 4, 22, 24, opts(s, PAL.winLit, 'solid', {strokeWidth:1.8, roughness:1.4}));
+  rc.ellipse(13, 21, 16, 15, opts(s+1, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.4}));
+  rc.polygon([[6,15],[7,6],[13,14]], opts(s+2, PAL.cat, 'solid'));
+  rc.polygon([[14,14],[20,6],[21,16]], opts(s+3, PAL.cat, 'solid'));
+  rc.circle(10, 20, 2, opts(s+4, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+  rc.circle(17, 20, 2, opts(s+5, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+}
+
+function drawPee(rc, g, s){
+  rc.ellipse(8, 7, 14, 8, opts(s, '#d9c24e', 'hachure', {hachureGap:2, fillWeight:1.4, strokeWidth:1, roughness:1.8}));
+}
+function drawPoop(rc, g, s){
+  rc.ellipse(6, 9, 7, 5, opts(s, '#6b4a2f', 'solid', {roughness:1.4}));
+  rc.ellipse(11, 8, 7, 5, opts(s+1, '#6b4a2f', 'solid', {roughness:1.4}));
+  rc.ellipse(9, 5, 6, 4, opts(s+2, '#6b4a2f', 'solid', {roughness:1.4}));
+}
+
 function drawTree(rc, g, s, kind){
   if (kind === 1){
     // tall slim poplar
@@ -457,7 +476,10 @@ const SPR = {
            v2: makeSprite(64, 84,(r,g,s)=>drawTree(r,g,s,2)) },
   tram:  { idle:  makeSprite(230,80,(r,g,s)=>drawTram(r,g,s)) },
   face:  { woman: makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'woman')),
-           man:   makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'man')) },
+           man:   makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'man')),
+           cat:   makeSprite(26,32,(r,g,s)=>drawCatInWindow(r,g,s)) },
+  mark:  { pee:  makeSprite(16,12,(r,g,s)=>drawPee(r,g,s)),
+           poop: makeSprite(18,14,(r,g,s)=>drawPoop(r,g,s)) },
   worm:  { idle:  makeSprite(26,16,(r,g,s)=>drawWormSprite(r,g,s)) },
   mound: { idle:  makeSprite(26,12,(r,g,s)=>drawMound(r,g,s)) },
   dog:   { brown0: makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk0','#7a5a3c')),
@@ -519,6 +541,7 @@ TREES.forEach(t => block(t[0] - 8, t[1] - 10, 16, 12));
 LAMPS.forEach(L => block(L[0] - 3, L[1] - 6, 6, 8));
 
 const LITWINS = [];   // centers of lit building windows, for the night glow
+const ALLWINS = [];   // centers of every building window, for window-dwellers
 function drawWorld(rc, g, s){
   g.fillStyle = PAPER; g.fillRect(0, 0, WORLD_W, WORLD_H);
 
@@ -601,7 +624,10 @@ function drawWorld(rc, g, s){
         const wx = b.x + 18 + c * (b.w - 30) / cols + jx;
         const wy = b.y + 14 + r * (b.h - 24) / rows + jy;
         const lit = (bi*13 + r*5 + c*7) % 9 === 0;
-        if (lit && worldLayers.length === 0) LITWINS.push([wx + 10, wy + 12]);
+        if (worldLayers.length === 0){
+          ALLWINS.push([wx + 10, wy + 12]);
+          if (lit) LITWINS.push([wx + 10, wy + 12]);
+        }
         rc.rectangle(wx, wy, 20, 24,
           opts(s+40 + bi*100 + r*10 + c, lit ? PAL.winLit : PAL.win, 'solid',
             {strokeWidth:1.6, roughness:1.7}));
@@ -676,7 +702,13 @@ const HEDGE_LINES = [
   "Kdysi tu byla louka. Teď je tu trávník. Není to totéž.",
   "Prý mám bodliny. No a? Ty máš zase vodítko.",
   "Viděl jsem dnes žížalu tak dlouhou, že se nevešla do vyprávění.",
-  "Ta popelnice v úterý hrozně bouchá. Úterky nemám rád."
+  "Ta popelnice v úterý hrozně bouchá. Úterky nemám rád.",
+  "Slyšel jsi to auto? Já se ani nehnul. Trénink.",
+  "Támhle běhali dva psi. Jeden hodný, druhý ukecaný.",
+  "Lidi si stěžují na hluk. To by měli slyšet ten svůj.",
+  "Máš pěkného pána. Nebo paní. Já špatně vidím.",
+  "Kámen, co tu ležel deset let, někdo odnesl. Bez rozloučení.",
+  "Kdybych byl o dvě bodliny statečnější, přešel bych."
 ];
 const HEDGE_ALT = [
   "…a jak jsem říkal, ta silnice.",
@@ -714,6 +746,27 @@ const CAT_LINES = [
   "Já bych to neřešil."
 ];
 
+// the cat mutters to himself while walking
+const CAT_STREET_LINES = [
+  "Zase někdo řve na ulici. Lidi.",
+  "Támhleti dělají v noci bordel a ráno spí.",
+  "Řvou, běhají, nechají tu nepořádek. A já jsem prý divný.",
+  "Slyšíš ten randál od baráku? Každý večer.",
+  "Někdo tu zase něco pokazil. A nebyla to kočka.",
+  "Lidi na ulici. Hluk a nepořádek. Klasika.",
+  "Ten křik. Kdyby aspoň někdo přines konzervu."
+];
+const CAT_MUSINGS = [
+  "Hezký večer. Skoro.",
+  "Dneska voní tráva jinak.",
+  "Vidíš toho ptáka? Já jo.",
+  "Kdybych uměl otevírat konzervy sám…",
+  "Ještě kousek a lehnu si.",
+  "Tuhle trávu si musím očmuchat.",
+  "Slunce zapadá. Načase jít domů.",
+  "Mohl bych běžet. Ale nebudu."
+];
+
 // ===================== ENTITIES =====================
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist  = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -726,6 +779,14 @@ function inPoly(px, py, poly){
       inside = !inside;
   }
   return inside;
+}
+function isGreen(x, y){
+  if (inPoly(x, y, PARK)) return true;
+  for (const gr of GRASS){
+    const dx = (x - gr[0]) / (gr[2] / 2), dy = (y - gr[1]) / (gr[3] / 2);
+    if (dx * dx + dy * dy <= 1) return true;
+  }
+  return false;
 }
 function randomParkPoint(){
   for (let k = 0; k < 30; k++){
@@ -743,9 +804,10 @@ const player = { x: 260, y: 1080, r: 12, kind: null, pose: 'walk0', flip: false,
                  animT: 0, moving: false, idleT: 0, special: null, specialT: 0 };
 // the other person arrives later by tram: away -> walking -> waiting
 const dest   = { x: 1790, y: 340, r: 12, kind: null, pose: 'walk0', flip: true,
-                 state: 'away', animT: 0 };
+                 state: 'away', animT: 0,
+                 tx: 1700 + Math.random() * 160, ty: 315 + Math.random() * 55 };  // varied wait spot
 const tram   = { x: WORLD_W + 160, y: 756, state: 'away', t: 0, vx: 0,
-                 stopX: 1790, arriveAt: 120 + Math.random() * 180 };  // 2-5 min
+                 stopX: 1790, arriveAt: 120 + Math.random() * 90 };  // 2 - 3.5 min
 // how the other person shows up this game: by tram, or coming down from
 // a flat in the north-east panelák (peeking out of a window until then)
 let arrivalMode = Math.random() < 0.5 ? 'tram' : 'window';
@@ -756,7 +818,8 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  sniffT: 0, target: null, stateT: 0, script: null,
                  treeSpot: null, treeCooldown: 6, zOff: 0,
                  wormTarget: null, carriedWorm: null, wormEatAt: null, dragT: 0,
-                 scaredOf: null };
+                 scaredOf: null, reliefCooldown: 40 + Math.random() * 40,
+                 reliefSpot: null, reliefKind: null };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
 let wormTimer = 15;
@@ -805,6 +868,13 @@ function nearestDog(){
 // occasional ambient traffic on the horizontal road
 const movingCars = [];
 let carTimer = 12 + Math.random() * 25;
+
+// people and cats that briefly appear at building windows
+const winFolks = [];   // {x, y, type:'woman'|'man'|'cat', flip, t, dur}
+let winTimer = 4 + Math.random() * 6;
+// little marks the cat leaves on the grass
+const marks = [];      // {x, y, kind:'pee'|'poop'}
+let catChatCooldown = 14 + Math.random() * 12;
 
 let bubbles = [];   // {ent, text, t, dur}
 function say(ent, text, dur){
@@ -926,7 +996,7 @@ function update(dt){
     if (tram.x < -220) tram.state = 'gone';
   }
   if (dest.state === 'walking'){
-    const tx = 1790, ty = 340;
+    const tx = dest.tx, ty = dest.ty;
     const d = Math.hypot(tx - dest.x, ty - dest.y);
     if (d < 4){
       dest.x = tx; dest.y = ty; dest.state = 'waiting'; dest.pose = 'walk0';
@@ -1019,6 +1089,24 @@ function update(dt){
     }
   }
 
+  // ---- window dwellers (people & cats appearing at windows) ----
+  winTimer -= dt;
+  if (winTimer <= 0){
+    if (ALLWINS.length && winFolks.length < 4){
+      const w = ALLWINS[Math.floor(Math.random() * ALLWINS.length)];
+      if (!winFolks.some(f => f.x === w[0] && f.y === w[1])){
+        const r = Math.random();
+        const type = r < 0.4 ? 'cat' : r < 0.7 ? 'woman' : 'man';
+        winFolks.push({ x: w[0], y: w[1], type, flip: Math.random() < 0.5,
+                        t: 0, dur: 5 + Math.random() * 10 });
+      }
+    }
+    winTimer = 3 + Math.random() * 6;
+  }
+  for (let i = winFolks.length - 1; i >= 0; i--){
+    if ((winFolks[i].t += dt) > winFolks[i].dur) winFolks.splice(i, 1);
+  }
+
   // ---- cat FSM ----
   catTalkCooldown -= dt;
   cat.stateT += dt;
@@ -1051,6 +1139,30 @@ function update(dt){
       else cat.sniffT = -(3 + Math.random() * 4);                        // (negative = walking window)
     }
     if (cat.sniffT > 0) catSpeed = 0;
+    // idle chatter — mutter about the noisy neighbours, or a quiet musing
+    catChatCooldown -= dt;
+    if (catChatCooldown <= 0 && !bubbles.some(b => b.ent === cat)){
+      const noisyFolks = peds.some(p => dist(p, cat) < 340) ||
+        (dest.state !== 'away' && dist(dest, cat) < 340);
+      const pool = (noisyFolks && Math.random() < 0.6) ? CAT_STREET_LINES : CAT_MUSINGS;
+      say(cat, pool[Math.floor(Math.random() * pool.length)], 2.8);
+      catChatCooldown = 18 + Math.random() * 16;
+    }
+    // occasional call of nature on a nearby patch of grass (within leash)
+    cat.reliefCooldown -= dt;
+    if (cat.state === 'wander' && cat.reliefCooldown <= 0){
+      for (let k = 0; k < 6; k++){
+        const ang = Math.random() * 6.28, rr = 20 + Math.random() * 70;
+        const sx = cat.x + Math.cos(ang) * rr, sy = cat.y + Math.sin(ang) * rr;
+        if (isGreen(sx, sy) && Math.hypot(player.x - sx, player.y - sy) < LEASH_LEN - 14){
+          cat.state = 'toRelief'; cat.reliefSpot = { x: sx, y: sy };
+          const r = Math.random();
+          cat.reliefKind = r < 0.45 ? 'pee' : r < 0.8 ? 'poop' : 'both';
+          cat.stateT = 0; break;
+        }
+      }
+      if (cat.state === 'wander') cat.reliefCooldown = 6;   // none reachable, retry soon
+    }
     // spot a hedgehog
     if (catTalkCooldown <= 0){
       for (const h of hedgehogs){
@@ -1213,6 +1325,24 @@ function update(dt){
     } else { catSpeed = 0; cat.pose = 'scared'; }   // cower by the owner
     if ((!dg || d > 180) && cat.stateT > 1.5){ cat.state = 'wander'; cat.stateT = 0; }
   }
+  else if (cat.state === 'toRelief'){
+    catTarget = cat.reliefSpot; catSpeed = 120;
+    if (dist(cat, cat.reliefSpot) < 12){
+      cat.state = 'relief'; cat.stateT = 0; catTarget = null; catSpeed = 0;
+    } else if (cat.stateT > 4){ cat.state = 'wander'; cat.stateT = 0; cat.reliefCooldown = 20; }
+  }
+  else if (cat.state === 'relief'){
+    catSpeed = 0; cat.pose = 'stalk0';   // low squat
+    if (cat.stateT > 2.2){
+      const sp = cat.reliefSpot;
+      if (cat.reliefKind === 'pee' || cat.reliefKind === 'both') marks.push({ x: sp.x, y: sp.y, kind: 'pee' });
+      if (cat.reliefKind === 'poop' || cat.reliefKind === 'both') marks.push({ x: sp.x + 7, y: sp.y + 2, kind: 'poop' });
+      if (marks.length > 24) marks.splice(0, marks.length - 24);
+      say(cat, cat.reliefKind === 'pee' ? 'Uf. Líp.' : 'Tak. Teď je to moje.', 2);
+      cat.state = 'wander'; cat.stateT = 0;
+      cat.reliefCooldown = 45 + Math.random() * 40;
+    }
+  }
   else if (cat.state === 'toDest'){
     catTarget = { x: dest.x + (dest.kind === 'man' ? 34 : -30), y: dest.y + 6 };
     catSpeed = 120;
@@ -1296,7 +1426,8 @@ function update(dt){
   // ---- reach destination ----
   if (gameState === 'play' && dest.state === 'waiting' && dist(player, dest) < 95 &&
       (cat.state === 'wander' || cat.state === 'approach' ||
-       cat.state === 'dashTree' || cat.state === 'toWorm' || cat.state === 'scared')){
+       cat.state === 'dashTree' || cat.state === 'toWorm' || cat.state === 'scared' ||
+       cat.state === 'toRelief' || cat.state === 'relief')){
     gameState = 'ending';
     if (cat.target) cat.target.paused = false;
     cat.state = 'toDest'; cat.stateT = 0;
@@ -1430,12 +1561,9 @@ function drawBubbles(variant){
 // starts shortly before sunset, ends in near-darkness with lamps lit
 const night = document.createElement('canvas');
 function dayPhase(){ return clamp((40 + playT) / 340, 0, 1); }
-function lampLit(i, dayT){
+function lampIntensity(i, dayT){
   const th = 0.5 + ((i * 37) % 10) * 0.02;               // staggered switch-on
-  if (dayT < th) return false;
-  const sinceOn = (dayT - th) * 340;                     // seconds since switch-on
-  if (sinceOn < 1.1) return Math.floor(playT * 14 + i * 5) % 3 > 0;  // brief warm-up sputter
-  return true;
+  return clamp((dayT - th) * 340 / 3.5, 0, 1);           // gradual fade-in over ~3.5s
 }
 function punchGlow(ng, sx, sy, r, strength){
   if (sx < -r || sx > VW + r || sy < -r || sy > VH + r) return;
@@ -1471,22 +1599,25 @@ function drawNight(){
   // punch out light pools before compositing the darkness
   ng.globalCompositeOperation = 'destination-out';
   LAMPS.forEach((L, i) => {
-    if (lampLit(i, dayT)) punchGlow(ng, L[0] - camX, L[1] - 46 - camY, 150, 0.9);
+    const it = lampIntensity(i, dayT);
+    if (it > 0.01) punchGlow(ng, L[0] - camX, L[1] - 46 - camY, 150, 0.9 * it);
   });
   LITWINS.forEach(w => punchGlow(ng, w[0] - camX, w[1] - camY, 46, 0.5));
+  winFolks.forEach(f => punchGlow(ng, f.x - camX, f.y - camY, 44, 0.5));
   ctx.drawImage(night, 0, 0);
-  // bright lamp heads on top of the darkness
+  // bright lamp heads on top of the darkness (brightness ramps with intensity)
   LAMPS.forEach((L, i) => {
-    if (!lampLit(i, dayT)) return;
+    const it = lampIntensity(i, dayT);
+    if (it <= 0.01) return;
     const sx = L[0] - camX, sy = L[1] - 48 - camY;
     if (sx < -40 || sx > VW + 40 || sy < -40 || sy > VH + 40) return;
     ctx.save();
     const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, 30);
-    halo.addColorStop(0, 'rgba(255,217,138,0.5)');
+    halo.addColorStop(0, `rgba(255,217,138,${0.5 * it})`);
     halo.addColorStop(1, 'rgba(255,217,138,0)');
     ctx.fillStyle = halo;
     ctx.beginPath(); ctx.arc(sx, sy, 30, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 0.85 * it;
     ctx.fillStyle = '#ffd98a';
     ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -1555,6 +1686,10 @@ function render(now){
   ctx.drawImage(worldLayers[variant],
     camX, camY, VW, VH, 0, 0, VW, VH);
 
+  // marks the cat left on the grass (flat decals, under everything)
+  marks.forEach(m => drawSprite(SPR.mark[m.kind], variant,
+    { x: m.x, y: m.y }, SPR.mark[m.kind].h * 0.5));
+
   // shadows
   shadow(player, 16, 5); shadow(cat, 18, 5);
   if (dest.state !== 'away') shadow(dest, 16, 5);
@@ -1614,6 +1749,10 @@ function render(now){
   // the awaited person peeking from their window (window arrival mode)
   if (arrivalMode === 'window' && peek.visible && dest.kind)
     drawSprite(SPR.face[dest.kind], variant, { x: PEEK.x, y: PEEK.y, flip: false });
+
+  // ambient neighbours & cats at their windows
+  winFolks.forEach(f => drawSprite(SPR.face[f.type], variant,
+    { x: f.x, y: f.y + 16, flip: f.flip }));
 
   drawNight();
   drawBubbles(variant);
