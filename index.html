@@ -272,6 +272,21 @@ function drawCat(rc, g, s, pose){
     // postroj across the chest
     rc.line(14, 28, 31, 27, opts(s+12, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
     rc.line(15, 34, 30, 33, opts(s+13, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
+  } else if (pose === 'scared'){
+    // arched back, puffed tail, ears flat — bolting (faces left)
+    rc.line(22, 34, 17, 46, opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(30, 36, 28, 47, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(44, 36, 46, 47, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(52, 34, 57, 46, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.polygon([[18,38],[24,20],[36,13],[48,20],[54,38],[44,40],[30,40]],
+      opts(s, PAL.cat, 'hachure', {hachureGap:2.4, fillWeight:2.6, strokeWidth:2}));
+    rc.ellipse(15, 33, 16, 14, opts(s+5, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    rc.polygon([[10,28],[9,21],[15,27]], opts(s+6, PAL.cat, 'solid'));
+    rc.polygon([[17,26],[21,20],[22,28]], opts(s+7, PAL.cat, 'solid'));
+    rc.curve([[54,34],[63,22],[62,6]], opts(s+8, null, null, {stroke:PAL.cat, strokeWidth:6, roughness:2.8}));
+    rc.circle(13, 31, 3.4, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    rc.circle(13.6, 31, 1.4, opts(s+12, INK, 'solid', {stroke:INK, roughness:.5}));
+    rc.line(30, 26, 44, 30, opts(s+11, null, null, {stroke:PAL.leash, strokeWidth:2.4}));
   } else {
     const step = pose === 'walk1';
     // legs
@@ -369,6 +384,31 @@ function drawMound(rc, g, s){
     opts(s, '#a67c52', 'hachure', {hachureGap:2.5, strokeWidth:1.6}));
 }
 
+function drawDog(rc, g, s, pose, col){
+  // side view facing left; anchor bottom center of an 80x58 box
+  const step = pose === 'walk1' ? 3 : 0;
+  rc.line(24, 40, 22 - step, 54, opts(s+1, null, null, {strokeWidth:3}));
+  rc.line(34, 40, 36 + step, 54, opts(s+2, null, null, {strokeWidth:3}));
+  rc.line(50, 40, 48 - step, 54, opts(s+3, null, null, {strokeWidth:3}));
+  rc.line(60, 40, 62 + step, 54, opts(s+4, null, null, {strokeWidth:3}));
+  rc.ellipse(42, 33, 48, 24, opts(s, col, 'hachure', {hachureGap:3, fillWeight:2.2, strokeWidth:2}));
+  rc.curve([[64,28],[72,20],[70,10]], opts(s+5, null, null, {strokeWidth:3.4}));   // tail
+  rc.ellipse(17, 25, 22, 20, opts(s+6, col, 'hachure', {hachureGap:3, fillWeight:2.2, strokeWidth:2}));
+  rc.polygon([[8,25],[1,29],[9,32]], opts(s+7, col, 'solid', {roughness:1.4}));    // snout
+  rc.polygon([[21,15],[25,5],[30,17]], opts(s+8, col, 'solid', {roughness:1.4}));  // floppy ear
+  rc.circle(15, 23, 2.2, opts(s+9, INK, 'solid', {roughness:.6}));                 // eye
+  rc.circle(2, 29, 1.6, opts(s+10, INK, 'solid', {roughness:.6}));                 // nose
+}
+
+function drawCarSprite(rc, g, s, col){
+  // side view, anchor bottom center of a 100x46 box
+  rc.polygon([[4,40],[12,14],[30,4],[70,4],[88,16],[96,40],[4,40]],
+    opts(s, col, 'hachure', {hachureGap:4, fillWeight:2, strokeWidth:2.2}));
+  rc.rectangle(30, 10, 40, 16, opts(s+1, PAL.win, 'solid', {strokeWidth:1.6, roughness:1.6}));
+  rc.circle(28, 40, 15, opts(s+2, INK, 'solid', {roughness:1.4}));
+  rc.circle(74, 40, 15, opts(s+3, INK, 'solid', {roughness:1.4}));
+}
+
 function drawTree(rc, g, s, kind){
   if (kind === 1){
     // tall slim poplar
@@ -408,6 +448,7 @@ const SPR = {
            stalk0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk0')),
            stalk1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk1')),
            climb:  makeSprite(48,72,(r,g,s)=>drawCat(r,g,s,'climb')),
+           scared: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'scared')),
            lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
   hedge: { walk0: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
            walk1: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
@@ -418,7 +459,18 @@ const SPR = {
   face:  { woman: makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'woman')),
            man:   makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'man')) },
   worm:  { idle:  makeSprite(26,16,(r,g,s)=>drawWormSprite(r,g,s)) },
-  mound: { idle:  makeSprite(26,12,(r,g,s)=>drawMound(r,g,s)) }
+  mound: { idle:  makeSprite(26,12,(r,g,s)=>drawMound(r,g,s)) },
+  dog:   { brown0: makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk0','#7a5a3c')),
+           brown1: makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk1','#7a5a3c')),
+           tan0:   makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk0','#bd914f')),
+           tan1:   makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk1','#bd914f')),
+           grey0:  makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk0','#8f8f8a')),
+           grey1:  makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk1','#8f8f8a')),
+           cream0: makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk0','#e0d2ac')),
+           cream1: makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk1','#e0d2ac')) },
+  car:   { a: makeSprite(100,46,(r,g,s)=>drawCarSprite(r,g,s,PAL.car1)),
+           b: makeSprite(100,46,(r,g,s)=>drawCarSprite(r,g,s,PAL.car2)),
+           c: makeSprite(100,46,(r,g,s)=>drawCarSprite(r,g,s,PAL.car3)) }
 };
 
 // ===================== WORLD =====================
@@ -435,7 +487,7 @@ const BUILDINGS = [
 ];
 const HROAD = {y: 700, h: 120};                    // horizontal road
 const VROAD = {x: 1280, w: 110};                   // vertical road
-const PARK  = [[300,330],[760,300],[880,560],[700,660],[330,640],[230,470]];
+const PARK  = [[210,260],[860,240],[980,430],[920,610],[690,690],[360,690],[190,500]];
 const CARS = [
   {x: 860, y: 660, w: 96, h: 40, c:PAL.car1},
   {x:1030, y: 662, w: 96, h: 40, c:PAL.car2},
@@ -443,15 +495,22 @@ const CARS = [
   {x: 300, y: 826, w: 96, h: 40, c:PAL.car2},
 ];
 const BINS = [ {x:460, y:250}, {x:1600, y:300}, {x:1010, y:1160} ];
-const TREES = [ [420,520],[560,430],[700,560],[360,430],[620,620],
-                [180,760],[1750,560],[1850,900],[500,1080],[1180,240],[900,980] ];
+const TREES = [ [420,520],[560,430],[700,560],[360,430],[620,620],  // park
+                [160,600],             // left of park
+                [1720,440],[1850,520], // top-right green near B2
+                [1780,1040],[1600,980],// bottom-right green near B5
+                [420,1050],[820,1080], // bottom green near B3/B4
+                [1080,320] ];          // top-center green
 const LAMPS = [ [300,690],[700,690],[1100,690],[1520,690],[1880,690],
                 [500,845],[900,845],[1460,845],[1780,845],
                 [1250,300],[1250,1010],[1420,480],[1420,1200],
                 [450,580],[720,470] ];
-// green ground softening the building courtyards [cx,cy,width,height]
-const GRASS = [ [430,300,250,72], [1780,320,220,72],
-                [1780,1050,210,84], [430,1120,200,84], [1120,1000,220,74] ];
+// big green areas around the building clusters [cx,cy,width,height]
+const GRASS = [ [1660,430,640,360],   // top-right (B2)
+                [1650,1040,700,380],  // bottom-right (B5)
+                [560,1060,820,380],   // bottom (B3/B4)
+                [150,560,360,400],    // left strip by the park
+                [1080,340,360,260] ]; // top-center
 
 BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
 CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
@@ -490,6 +549,15 @@ function drawWorld(rc, g, s){
   rc.curve([[320,600],[520,520],[700,480],[860,540]],
     opts(s+6, null, null, {stroke:PAL.pink, strokeWidth:10, roughness:2.6}));
 
+  // big green areas around the building clusters + a patch under every tree,
+  // so nothing green sprouts straight out of bare paper or pavement. Drawn
+  // before the roads/buildings (fixed seeds, no boil) so they never cover a
+  // road or a facade — those paint over any overlap.
+  GRASS.forEach((gr, i) => rc.ellipse(gr[0], gr[1], gr[2], gr[3],
+    opts(9200+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
+  TREES.forEach((t, i) => rc.ellipse(t[0], t[1]+8, 92, 50,
+    opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
+
   // roads — fixed seeds (not derived from s) so they stay identical in both
   // boil variants; a large flickering hachure field was too distracting
   rc.rectangle(0, HROAD.y, WORLD_W, HROAD.h,
@@ -520,15 +588,6 @@ function drawWorld(rc, g, s){
     rc.rectangle(VROAD.x + 6 + i*17, 560 + (i%2)*3, 12, 56,
       opts(9020+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
   }
-
-  // green ground: soft grass around the buildings and a patch under every
-  // tree, so nothing green sprouts straight out of bare paper or pavement.
-  // Drawn after the roads (fixed seeds, no boil) so roadside trees keep a
-  // visible verge, but before the buildings so it never covers a facade.
-  GRASS.forEach((gr, i) => rc.ellipse(gr[0], gr[1], gr[2], gr[3],
-    opts(9200+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
-  TREES.forEach((t, i) => rc.ellipse(t[0], t[1]+8, 88, 48,
-    opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
 
   // buildings — paneláky with misaligned windows
   BUILDINGS.forEach((b, bi) => {
@@ -670,7 +729,7 @@ function inPoly(px, py, poly){
 }
 function randomParkPoint(){
   for (let k = 0; k < 30; k++){
-    const x = 240 + Math.random() * 630, y = 310 + Math.random() * 340;
+    const x = 210 + Math.random() * 760, y = 270 + Math.random() * 390;
     if (inPoly(x, y, PARK)) return { x, y };
   }
   return { x: 520, y: 500 };
@@ -696,7 +755,8 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  state: 'wander', orbitA: Math.random() * 6.28, orbitR: 90,
                  sniffT: 0, target: null, stateT: 0, script: null,
                  treeSpot: null, treeCooldown: 6, zOff: 0,
-                 wormTarget: null, carriedWorm: null, wormEatAt: null, dragT: 0 };
+                 wormTarget: null, carriedWorm: null, wormEatAt: null, dragT: 0,
+                 scaredOf: null };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
 let wormTimer = 15;
@@ -710,6 +770,41 @@ HEDGE_SPAWNS.forEach((p, i) => hedgehogs.push({
   dir: Math.random() * 6.28, moveT: 1 + Math.random() * 2, paused: false,
   line: HEDGE_LINES[i % HEDGE_LINES.length], talked: false, cooldown: 0
 }));
+
+// other neighbours out walking, some with dogs (leashed or not, varied types)
+const DOG_TYPES = ['brown', 'tan', 'grey', 'cream'];
+const peds = [];
+function spawnPed(x, y, withDog, leashed){
+  const kind = Math.random() < 0.5 ? 'woman' : 'man';
+  const ped = { x, y, kind, r: 12, dir: Math.random() * 6.28, speed: 38 + Math.random() * 26,
+                moveT: 2 + Math.random() * 3, animT: 0, pose: 'walk0', flip: false, dog: null };
+  if (withDog){
+    ped.dog = { type: DOG_TYPES[Math.floor(Math.random() * DOG_TYPES.length)],
+                scale: 0.7 + Math.random() * 0.6, leashed, r: 8,
+                x: x + 24, y: y + 12, wx: x, wy: y, moveT: 1 + Math.random() * 2,
+                animT: 0, pose: 'walk0', flip: false };
+  }
+  peds.push(ped);
+}
+spawnPed(1000, 900, true, true);
+spawnPed(560, 980, false, false);
+spawnPed(1520, 640, true, false);
+spawnPed(300, 430, true, true);
+spawnPed(1500, 1050, false, false);
+
+function nearestDog(){
+  let best = null, bd = 1e9;
+  for (const p of peds){
+    if (!p.dog) continue;
+    const d = dist(cat, p.dog);
+    if (d < bd){ bd = d; best = p.dog; }
+  }
+  return { dog: best, d: bd };
+}
+
+// occasional ambient traffic on the horizontal road
+const movingCars = [];
+let carTimer = 12 + Math.random() * 25;
 
 let bubbles = [];   // {ent, text, t, dur}
 function say(ent, text, dur){
@@ -860,23 +955,100 @@ function update(dt){
     else if (w.state === 'out' && w.t > 30) w.state = 'gone';
   }
 
+  // ---- ambient traffic (rare) ----
+  carTimer -= dt;
+  if (carTimer <= 0){
+    if (movingCars.length < 2){
+      const eastbound = Math.random() < 0.5;
+      const sp = 130 + Math.random() * 90;
+      movingCars.push({ x: eastbound ? -140 : WORLD_W + 140,
+        y: eastbound ? 748 : 790, vx: eastbound ? sp : -sp,
+        spr: ['a', 'b', 'c'][Math.floor(Math.random() * 3)] });
+    }
+    carTimer = 22 + Math.random() * 55;    // very rarely
+  }
+  for (let i = movingCars.length - 1; i >= 0; i--){
+    movingCars[i].x += movingCars[i].vx * dt;
+    if (movingCars[i].x < -180 || movingCars[i].x > WORLD_W + 180) movingCars.splice(i, 1);
+  }
+
+  // ---- other people & their dogs ----
+  for (const p of peds){
+    p.moveT -= dt;
+    if (p.moveT <= 0){
+      p.dir = Math.random() * Math.PI * 2;
+      p.moveT = 2 + Math.random() * 4;
+      if (Math.random() < 0.2) p.moveT = -(1 + Math.random() * 2);  // pause
+    }
+    if (p.moveT > 0){
+      p.x += Math.cos(p.dir) * p.speed * dt;
+      p.y += Math.sin(p.dir) * p.speed * dt;
+      p.flip = Math.cos(p.dir) < 0;
+      p.animT += dt;
+      p.pose = (Math.floor(p.animT / 0.24) % 2) ? 'walk1' : 'walk0';
+      collide(p);
+      if (p.x <= 24 || p.x >= WORLD_W - 24 || p.y <= 24 || p.y >= WORLD_H - 24)
+        p.dir += Math.PI;                         // turn back at the edges
+    } else p.pose = 'walk0';
+
+    if (p.dog){
+      const dg = p.dog;
+      let dtx, dty;
+      if (dg.leashed){                            // trails just behind the owner
+        dtx = p.x + (p.flip ? 24 : -24); dty = p.y + 14;
+      } else {                                    // roams loosely around the owner
+        dg.moveT -= dt;
+        if (dg.moveT <= 0){
+          dg.wx = p.x + (Math.random() * 200 - 100);
+          dg.wy = p.y + (Math.random() * 200 - 100);
+          dg.moveT = 1.5 + Math.random() * 2.5;
+        }
+        dtx = dg.wx; dty = dg.wy;
+      }
+      const dd = Math.hypot(dtx - dg.x, dty - dg.y) || 1;
+      const near = dg.leashed ? 22 : 14;
+      if (dd > near){
+        const dsp = dg.leashed ? 75 : 58;
+        dg.x += (dtx - dg.x) / dd * dsp * dt;
+        dg.y += (dty - dg.y) / dd * dsp * dt;
+        dg.flip = (dtx - dg.x) < 0;
+        dg.animT += dt;
+        dg.pose = (Math.floor(dg.animT / 0.2) % 2) ? 'walk1' : 'walk0';
+        collide(dg);
+      } else dg.pose = 'walk0';
+    }
+  }
+
   // ---- cat FSM ----
   catTalkCooldown -= dt;
   cat.stateT += dt;
   let catSpeed = 0, catTarget = null;
 
+  // a nearby dog frightens the cat, interrupting most activities
+  if (cat.state !== 'scared' && cat.state !== 'toDest' && cat.state !== 'petted' &&
+      cat.state !== 'inTree' && cat.state !== 'downTree'){
+    const nd = nearestDog();
+    if (nd.dog && nd.d < 115){
+      if (cat.target) cat.target.paused = false;
+      cat.script = null; cat.wormTarget = null;
+      cat.state = 'scared'; cat.scaredOf = nd.dog; cat.stateT = 0;
+      say(cat, 'Fss!', 1.3);
+    }
+  }
+
   if (cat.state === 'wander'){
-    cat.orbitA += dt * 0.9 * (Math.sin(cat.stateT * 0.37) > 0 ? 1 : -1);
-    cat.orbitR = 70 + 45 * Math.sin(cat.stateT * 0.6 + 1.3)
-                    + 20 * Math.sin(cat.stateT * 1.7);
+    // circle the player more actively, with fewer/shorter sniff stops
+    cat.orbitA += dt * 1.7 * (Math.sin(cat.stateT * 0.5) > 0 ? 1 : -1);
+    cat.orbitR = 80 + 40 * Math.sin(cat.stateT * 0.6 + 1.3)
+                    + 22 * Math.sin(cat.stateT * 1.7);
     catTarget = { x: player.x + Math.cos(cat.orbitA) * cat.orbitR,
                   y: player.y + Math.sin(cat.orbitA) * cat.orbitR * 0.8 };
-    catSpeed = 110 + 60 * Math.max(0, Math.sin(cat.stateT * 0.9));
+    catSpeed = 135 + 55 * Math.max(0, Math.sin(cat.stateT * 0.9));
     // random sniff pause
     cat.sniffT -= dt;
     if (cat.sniffT <= 0){
-      if (Math.random() < 0.25) cat.sniffT = 0.8 + Math.random() * 1.4; // pause
-      else cat.sniffT = -(2 + Math.random() * 3);                        // (negative = walking window)
+      if (Math.random() < 0.15) cat.sniffT = 0.5 + Math.random() * 0.9;  // shorter, rarer
+      else cat.sniffT = -(3 + Math.random() * 4);                        // (negative = walking window)
     }
     if (cat.sniffT > 0) catSpeed = 0;
     // spot a hedgehog
@@ -907,10 +1079,13 @@ function update(dt){
     // sudden urge to climb a nearby tree (must be within leash reach)
     cat.treeCooldown -= dt;
     if (cat.state === 'wander' && cat.treeCooldown <= 0){
-      for (const t of TREES){
+      for (let ti = 0; ti < TREES.length; ti++){
+        const t = TREES[ti];
         if (Math.hypot(cat.x - t[0], cat.y - t[1]) < 150 &&
             Math.hypot(player.x - t[0], player.y - t[1]) < LEASH_LEN - 10){
-          cat.state = 'dashTree'; cat.treeSpot = { x: t[0], y: t[1] + 4 };
+          const th = [100, 116, 84][ti % 3];   // sprite height of this tree variant
+          cat.state = 'dashTree';
+          cat.treeSpot = { x: t[0], y: t[1] + 4, perch: Math.round(th * 0.5) };
           cat.stateT = 0;
           break;
         }
@@ -1012,12 +1187,31 @@ function update(dt){
   }
   else if (cat.state === 'inTree'){
     catSpeed = 0;
-    // dragged off by the leash, or done lounging
+    // dragged off by the leash, or done lounging -> jump down
     if (cat.stateT > 3 || dist(cat, cat.treeSpot) > 40){
+      cat.state = 'downTree'; cat.stateT = 0;
+    }
+  }
+  else if (cat.state === 'downTree'){
+    catSpeed = 0; cat.pose = 'climb';   // cling & descend, stay put until landed
+    if (cat.zOff < 3){
       cat.state = 'wander'; cat.stateT = 0;
       cat.treeCooldown = 14 + Math.random() * 12;
       say(cat, 'Hop.', 1);
     }
+  }
+  else if (cat.state === 'scared'){
+    const dg = cat.scaredOf;
+    const d = dg ? dist(cat, dg) : 999;
+    if (dist(cat, player) > 40){
+      // bolt toward the player, away from the dog
+      const ax = dg ? (cat.x - dg.x) : 0, ay = dg ? (cat.y - dg.y) : 0;
+      const al = Math.hypot(ax, ay) || 1;
+      catTarget = { x: player.x * 0.7 + (cat.x + ax / al * 60) * 0.3,
+                    y: player.y * 0.7 + (cat.y + ay / al * 60) * 0.3 };
+      catSpeed = 210;
+    } else { catSpeed = 0; cat.pose = 'scared'; }   // cower by the owner
+    if ((!dg || d > 180) && cat.stateT > 1.5){ cat.state = 'wander'; cat.stateT = 0; }
   }
   else if (cat.state === 'toDest'){
     catTarget = { x: dest.x + (dest.kind === 'man' ? 34 : -30), y: dest.y + 6 };
@@ -1038,15 +1232,18 @@ function update(dt){
       cat.x += vx * catSpeed * dt;
       cat.y += vy * catSpeed * dt;
       cat.flip = vx < 0;
-      cat.animT += dt;
-      const gait = cat.state === 'approach' ? 'stalk' : 'walk';
-      cat.pose = gait + ((Math.floor(cat.animT / 0.22) % 2) ? '1' : '0');
+      if (cat.state === 'scared'){ cat.pose = 'scared'; }
+      else {
+        cat.animT += dt;
+        const gait = cat.state === 'approach' ? 'stalk' : 'walk';
+        cat.pose = gait + ((Math.floor(cat.animT / 0.22) % 2) ? '1' : '0');
+      }
     } else if (cat.state === 'wander'){
       cat.pose = 'walk0';
     }
   }
   // jump up into / down from the canopy (drawn height above the ground spot)
-  const zTarget = cat.state === 'inTree' ? 58 : 0;
+  const zTarget = (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.perch : 0;
   cat.zOff += clamp(zTarget - cat.zOff, -260 * dt, 260 * dt);
 
   // leash constraint (not during ending — leash unclipped)
@@ -1099,7 +1296,7 @@ function update(dt){
   // ---- reach destination ----
   if (gameState === 'play' && dest.state === 'waiting' && dist(player, dest) < 95 &&
       (cat.state === 'wander' || cat.state === 'approach' ||
-       cat.state === 'dashTree' || cat.state === 'toWorm')){
+       cat.state === 'dashTree' || cat.state === 'toWorm' || cat.state === 'scared')){
     gameState = 'ending';
     if (cat.target) cat.target.paused = false;
     cat.state = 'toDest'; cat.stateT = 0;
@@ -1126,11 +1323,12 @@ function showEnd(){
 // ===================== RENDER =====================
 function drawSprite(spr, variant, ent, anchorH){
   const img = spr[variant];
-  const w = spr.w, h = spr.h;
+  const sc = ent.scale || 1;
+  const w = spr.w * sc, h = spr.h * sc;
   ctx.save();
   ctx.translate(ent.x - camX, ent.y - camY);
   if (ent.flip) ctx.scale(-1, 1);
-  ctx.drawImage(img, -w / 2, -(anchorH !== undefined ? anchorH : h), w, h);
+  ctx.drawImage(img, -w / 2, -(anchorH !== undefined ? anchorH * sc : h), w, h);
   ctx.restore();
 }
 
@@ -1320,6 +1518,19 @@ function drawHudArrow(variant){
   ctx.restore();
 }
 
+function drawDogLeashes(){
+  for (const p of peds){
+    if (!p.dog || !p.dog.leashed) continue;
+    ctx.save();
+    ctx.strokeStyle = '#7a6b5a'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(p.x - camX + (p.flip ? -8 : 8), p.y - camY - 40);
+    ctx.lineTo(p.dog.x - camX, p.dog.y - camY - 10 * p.dog.scale);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function drawJoystick(){
   if (!joy.active) return;
   ctx.save();
@@ -1349,6 +1560,8 @@ function render(now){
   if (dest.state !== 'away') shadow(dest, 16, 5);
   if (tram.state === 'arriving' || tram.state === 'doors' || tram.state === 'leaving')
     shadow({ x: tram.x, y: tram.y + 34 }, 95, 8);
+  movingCars.forEach(mc => shadow({ x: mc.x, y: mc.y }, 40, 8));
+  peds.forEach(p => { shadow(p, 15, 5); if (p.dog) shadow(p.dog, 18 * p.dog.scale, 5); });
   hedgehogs.forEach(h => shadow(h, 14, 4));
   TREES.forEach(t => {
     const e = { x: t[0], y: t[1] };
@@ -1356,10 +1569,19 @@ function render(now){
   });
 
   drawLeash(variant);
+  drawDogLeashes();
 
   // y-sorted entities
   const ents = [];
   ents.push({ y: player.y, draw: () => drawSprite(SPR[player.kind][player.pose], variant, player) });
+  movingCars.forEach(mc => ents.push({ y: mc.y, draw: () =>
+    drawSprite(SPR.car[mc.spr], variant, { x: mc.x, y: mc.y, flip: mc.vx < 0 }) }));
+  peds.forEach(p => {
+    ents.push({ y: p.y, draw: () => drawSprite(SPR[p.kind][p.pose], variant, p) });
+    if (p.dog) ents.push({ y: p.dog.y, draw: () => drawSprite(
+      SPR.dog[p.dog.type + (p.dog.pose === 'walk1' ? '1' : '0')], variant,
+      { x: p.dog.x, y: p.dog.y, flip: p.dog.flip, scale: p.dog.scale }) });
+  });
   if (dest.state !== 'away')
     ents.push({ y: dest.y, draw: () => drawSprite(SPR[dest.kind][dest.pose], variant, dest) });
   if (tram.state === 'arriving' || tram.state === 'doors' || tram.state === 'leaving')
@@ -1374,10 +1596,11 @@ function render(now){
     } });
   });
   // while in a tree, sort just below the tree's anchor so he draws over its canopy
-  ents.push({ y: (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.y + 12 : cat.y,
+  const catUp = (cat.state === 'inTree' || cat.state === 'downTree') && cat.treeSpot;
+  ents.push({ y: catUp ? cat.treeSpot.y + 12 : cat.y,
               draw: () => {
     // in a tree, face so the paws grip the trunk (flip when on the tree's right)
-    const catFlip = (cat.state === 'inTree' && cat.treeSpot) ? (cat.x > cat.treeSpot.x) : cat.flip;
+    const catFlip = catUp ? (cat.x > cat.treeSpot.x) : cat.flip;
     drawSprite(SPR.cat[cat.pose], variant, { x: cat.x, y: cat.y - cat.zOff, flip: catFlip });
     if (cat.carriedWorm)
       drawSprite(SPR.worm.idle, variant,
