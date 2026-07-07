@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Kočka na vodítku</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/rough.js/4.6.6/rough.min.js"></script>
+<style>
+  :root{
+    --ink:#3a4066; --paper:#f4ead2; --pink:#e7b7b0; --green:#8fae72;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--paper);
+    font-family:"Segoe Print","Bradley Hand","Comic Sans MS","Chalkboard SE",cursive;
+    color:var(--ink); touch-action:none; -webkit-user-select:none; user-select:none;}
+  canvas#game{display:block;width:100vw;height:100vh}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:18px;background:var(--paper);z-index:10;padding:20px;text-align:center}
+  .overlay.hidden{display:none}
+  h1{font-size:clamp(28px,6vw,52px);margin:0;transform:rotate(-2deg);letter-spacing:1px}
+  .sub{font-size:clamp(14px,3vw,19px);max-width:520px;line-height:1.5;transform:rotate(.5deg)}
+  .chars{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+  button.char{background:#fdf6e6;border:3px solid var(--ink);cursor:pointer;padding:14px 18px 10px;
+    border-radius:18px 6px 22px 8px/8px 20px 6px 18px;
+    font-family:inherit;color:var(--ink);font-size:17px;transition:transform .15s}
+  button.char:nth-child(1){transform:rotate(-1.5deg)}
+  button.char:nth-child(2){transform:rotate(1.8deg)}
+  button.char:hover,button.char:focus-visible{transform:rotate(0) scale(1.06);outline:3px dashed var(--ink);outline-offset:4px}
+  button.char canvas{display:block;margin:0 auto 6px}
+  .hint{font-size:13px;opacity:.75;margin-top:8px}
+  #endScreen{background:rgba(244,234,210,.94)}
+  #endScreen p{font-size:clamp(16px,3.5vw,22px);max-width:480px;line-height:1.6}
+  button.again{background:#fdf6e6;border:3px solid var(--ink);color:var(--ink);font-family:inherit;
+    font-size:18px;padding:10px 26px;cursor:pointer;transform:rotate(-1deg);
+    border-radius:14px 5px 16px 7px/7px 15px 5px 14px}
+  button.again:hover{transform:rotate(.5deg) scale(1.05)}
+  @media (prefers-reduced-motion: reduce){ button{transition:none} }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div class="overlay" id="startScreen">
+  <h1>Kočka na vodítku</h1>
+  <div class="sub">Vyber, kdo dnes jde s kočkou na procházku.<br>Ten druhý čeká na druhém konci sídliště.</div>
+  <div class="chars">
+    <button class="char" id="pickWoman"><canvas id="pw" width="120" height="180"></canvas>ona</button>
+    <button class="char" id="pickMan"><canvas id="pm" width="120" height="180"></canvas>on</button>
+  </div>
+  <div class="hint">WASD / šipky &nbsp;·&nbsp; na mobilu polož prst a táhni</div>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <h1 id="endTitle">Konec procházky</h1>
+  <p id="endText"></p>
+  <button class="again" onclick="location.reload()">ještě jednou</button>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   KOČKA NA VODÍTKU — sketchy placeholder prototype
+   Rough.js art, boiling-line animation, Prague panelák vibes
+   ============================================================ */
+
+// ---------- constants ----------
+const INK   = '#3a4066';
+const PAPER = '#f4ead2';
+const PAL = {
+  pink:'#e7b7b0', green:'#8fae72', darkgreen:'#6f9457', road:'#9aa3b2',
+  panel1:'#d9c9a8', panel2:'#c7b4c9', panel3:'#a8bfc9', panel4:'#dbb08a',
+  brick:'#bd6b4f', skin:'#f0c9a0', hairW:'#d1592a', hairM:'#6b4a36',
+  dressW:'#5f9ea0', coatM:'#c98f4a', cat:'#2b2b30', hedge:'#8a5a33',
+  hedgeFace:'#c9a06b', leash:'#b0413e', win:'#f2e2b0', winLit:'#f0c25e',
+  car1:'#7fa88f', car2:'#b7c9e0', car3:'#e0c48a'
+};
+const WORLD_W = 2000, WORLD_H = 1500;
+const LEASH_LEN = 150;
+const BOIL_MS = 280;                 // boiling-line swap period
+const SS = 2;                        // sprite supersampling
+
+// ---------- canvas / dpr ----------
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+let VW = 0, VH = 0, DPR = 1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  VW = window.innerWidth; VH = window.innerHeight;
+  cvs.width = VW * DPR; cvs.height = VH * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize); resize();
+
+// ---------- rough helpers ----------
+function opts(seed, fill, style, extra){
+  const o = {
+    seed: seed, stroke: INK, strokeWidth: 2.2, roughness: 2.0, bowing: 2,
+    fillWeight: 2, hachureGap: 6, disableMultiStroke: false
+  };
+  if (fill){ o.fill = fill; o.fillStyle = style || 'hachure'; }
+  if (extra) Object.assign(o, extra);
+  return o;
+}
+
+// ---------- sprite factory (2 boil variants each) ----------
+function makeSprite(w, h, drawFn){
+  const out = [];
+  for (let v = 0; v < 2; v++){
+    const c = document.createElement('canvas');
+    c.width = w * SS; c.height = h * SS;
+    const g = c.getContext('2d');
+    g.scale(SS, SS);
+    const rc = rough.canvas(c);
+    drawFn(rc, g, 100 + v * 37);       // different seed => boiling line
+    out.push(c);
+  }
+  out.w = w; out.h = h;
+  return out;
+}
+
+// ===================== SPRITES =====================
+// Figures are drawn front-view, child-map style; anchor = bottom center.
+
+function drawWoman(rc, g, s, pose){
+  // pose: 'walk0' | 'walk1' | 'pet'
+  const kneel = pose === 'pet';
+  const oy = kneel ? 22 : 0;                    // sink down when kneeling
+  // legs
+  if (pose === 'walk0'){
+    rc.line(28, 96, 22, 118, opts(s+1, null, null, {strokeWidth:3}));
+    rc.line(36, 96, 42, 118, opts(s+2, null, null, {strokeWidth:3}));
+  } else if (pose === 'walk1'){
+    rc.line(30, 96, 30, 118, opts(s+1, null, null, {strokeWidth:3}));
+    rc.line(34, 96, 35, 118, opts(s+2, null, null, {strokeWidth:3}));
+  } else {
+    rc.line(26, 112, 44, 116, opts(s+1, null, null, {strokeWidth:3})); // folded legs
+  }
+  // dress (long trapezoid, Modigliani-ish)
+  rc.polygon([[24,52+oy],[40,52+oy],[50,100+oy*0.3],[14,100+oy*0.3]],
+    opts(s+3, PAL.dressW, 'hachure', {hachureGap:5}));
+  // arms
+  if (kneel){
+    rc.line(26, 60+oy, 4, 92, opts(s+4, null, null, {strokeWidth:3}));   // petting arm
+  } else {
+    rc.line(26, 58, 18, 84, opts(s+4, null, null, {strokeWidth:3}));
+    rc.line(38, 58, 47, 82, opts(s+5, null, null, {strokeWidth:3}));
+  }
+  // long neck
+  rc.line(32, 52+oy, 33, 40+oy, opts(s+6, null, null, {strokeWidth:4}));
+  // elongated tilted head
+  rc.ellipse(33, 26+oy, 20, 32, opts(s+7, PAL.skin, 'solid', {roughness:1.6, bowing:2.5}));
+  // hair — orange arc
+  rc.arc(33, 22+oy, 26, 30, Math.PI*0.95, Math.PI*2.08, true,
+    opts(s+8, PAL.hairW, 'hachure', {hachureGap:3, fillWeight:2.4}));
+  rc.line(22, 26+oy, 20, 46+oy, opts(s+9, null, null, {stroke:PAL.hairW, strokeWidth:4}));
+  // empty Modigliani eyes + tiny mouth
+  rc.line(28, 24+oy, 31, 24+oy, opts(s+10, null, null, {strokeWidth:1.6, roughness:1}));
+  rc.line(36, 24+oy, 39, 24+oy, opts(s+11, null, null, {strokeWidth:1.6, roughness:1}));
+  rc.line(31, 34+oy, 35, 33.4+oy, opts(s+12, null, null, {strokeWidth:1.4, roughness:1}));
+}
+
+function drawMan(rc, g, s, pose){
+  const kneel = pose === 'pet';
+  const oy = kneel ? 22 : 0;
+  // legs (trousers)
+  if (pose === 'walk0'){
+    rc.line(27, 94, 20, 118, opts(s+1, null, null, {strokeWidth:4}));
+    rc.line(37, 94, 44, 118, opts(s+2, null, null, {strokeWidth:4}));
+  } else if (pose === 'walk1'){
+    rc.line(29, 94, 28, 118, opts(s+1, null, null, {strokeWidth:4}));
+    rc.line(35, 94, 37, 118, opts(s+2, null, null, {strokeWidth:4}));
+  } else {
+    rc.line(24, 112, 44, 115, opts(s+1, null, null, {strokeWidth:4}));
+  }
+  // coat — boxy
+  rc.polygon([[22,50+oy],[42,50+oy],[46,96+oy*0.3],[18,96+oy*0.3]],
+    opts(s+3, PAL.coatM, 'hachure', {hachureGap:5}));
+  // arms
+  if (kneel){
+    rc.line(40, 58+oy, 60, 92, opts(s+4, null, null, {strokeWidth:3.4}));
+  } else {
+    rc.line(24, 56, 15, 82, opts(s+4, null, null, {strokeWidth:3.4}));
+    rc.line(40, 56, 48, 80, opts(s+5, null, null, {strokeWidth:3.4}));
+  }
+  // neck + narrow long head
+  rc.line(32, 50+oy, 32, 40+oy, opts(s+6, null, null, {strokeWidth:4.4}));
+  rc.ellipse(32, 25+oy, 19, 30, opts(s+7, PAL.skin, 'solid', {roughness:1.6, bowing:2.5}));
+  // brown hair blob
+  rc.ellipse(32, 12+oy, 20, 12, opts(s+8, PAL.hairM, 'hachure', {hachureGap:2.6, fillWeight:2.2}));
+  // face
+  rc.line(27, 23+oy, 30, 23+oy, opts(s+10, null, null, {strokeWidth:1.6, roughness:1}));
+  rc.line(35, 23+oy, 38, 23+oy, opts(s+11, null, null, {strokeWidth:1.6, roughness:1}));
+  rc.line(30, 33+oy, 34, 33+oy, opts(s+12, null, null, {strokeWidth:1.4, roughness:1}));
+}
+
+function drawCat(rc, g, s, pose){
+  const co = opts(s, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6, strokeWidth:2});
+  if (pose === 'lay'){
+    // flat loaf, tail wrapped
+    rc.ellipse(34, 34, 52, 20, co);
+    rc.ellipse(56, 28, 20, 17, opts(s+1, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    rc.polygon([[50,21],[53,12],[57,20]], opts(s+2, PAL.cat, 'solid'));
+    rc.polygon([[60,20],[65,12],[66,21]], opts(s+3, PAL.cat, 'solid'));
+    rc.curve([[12,36],[4,30],[10,22],[18,26]], opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    // closed eyes
+    rc.line(52, 27, 55, 28, opts(s+5, null, null, {stroke:PAPER, strokeWidth:1.4, roughness:.8}));
+    rc.line(59, 27, 62, 28, opts(s+6, null, null, {stroke:PAPER, strokeWidth:1.4, roughness:.8}));
+    // postroj strap
+    rc.line(40, 26, 42, 42, opts(s+7, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+  } else {
+    const step = pose === 'walk1';
+    // legs
+    const ly = 44;
+    if (step){
+      rc.line(20, 36, 15, ly, opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(28, 36, 31, ly, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(42, 36, 39, ly, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(50, 36, 55, ly, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    } else {
+      rc.line(21, 36, 22, ly, opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(27, 36, 26, ly, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(43, 36, 44, ly, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(49, 36, 48, ly, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    }
+    // body + head
+    rc.ellipse(35, 30, 40, 17, co);
+    rc.ellipse(54, 22, 18, 15, opts(s+5, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    // ears
+    rc.polygon([[48,16],[50,7],[55,14]], opts(s+6, PAL.cat, 'solid'));
+    rc.polygon([[57,14],[62,7],[63,16]], opts(s+7, PAL.cat, 'solid'));
+    // tail — proud up / curled
+    if (step) rc.curve([[16,28],[8,16],[12,6]], opts(s+8, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    else      rc.curve([[16,28],[6,22],[6,10],[12,6]], opts(s+9, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    // green eyes + whiskers
+    rc.circle(51, 21, 3, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    rc.circle(58, 21, 3, opts(s+11, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    rc.line(60, 25, 68, 24, opts(s+12, null, null, {stroke:PAPER, strokeWidth:1, roughness:.8}));
+    rc.line(60, 27, 67, 28, opts(s+13, null, null, {stroke:PAPER, strokeWidth:1, roughness:.8}));
+    // postroj — red harness strap
+    rc.line(44, 20, 46, 36, opts(s+14, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+  }
+}
+
+function drawHedgehog(rc, g, s, pose){
+  const step = pose === 'walk1' ? 2 : 0;
+  // spiky dome — dense hachure IS the spikes
+  rc.polygon([[8,30],[10,14],[22,5],[36,8],[44,20],[44,30]],
+    opts(s, PAL.hedge, 'hachure', {hachureGap:2.4, fillWeight:2.8, strokeWidth:2}));
+  // face
+  rc.polygon([[44,20],[56,27],[44,31]], opts(s+1, PAL.hedgeFace, 'solid', {roughness:1.6}));
+  rc.circle(56, 27, 3.4, opts(s+2, INK, 'solid', {roughness:.8}));
+  rc.circle(47, 23, 2, opts(s+3, INK, 'solid', {roughness:.8}));
+  // stubby legs
+  rc.line(16 + step, 30, 16 + step, 37, opts(s+4, null, null, {strokeWidth:3}));
+  rc.line(36 - step, 30, 36 - step, 37, opts(s+5, null, null, {strokeWidth:3}));
+}
+
+function drawTree(rc, g, s){
+  rc.line(30, 96, 30, 62, opts(s, null, null, {stroke:PAL.hairM, strokeWidth:6, bowing:3}));
+  rc.circle(30, 40, 52, opts(s+1, PAL.darkgreen, 'cross-hatch', {hachureGap:5, fillWeight:1.8, bowing:3}));
+  rc.circle(14, 52, 26, opts(s+2, PAL.green, 'hachure', {hachureGap:4, fillWeight:1.8}));
+  rc.circle(46, 50, 28, opts(s+3, PAL.green, 'hachure', {hachureGap:4, fillWeight:1.8}));
+}
+
+// build all sprites
+const SPR = {
+  woman: { walk0: makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'walk0')),
+           walk1: makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'walk1')),
+           pet:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'pet')) },
+  man:   { walk0: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk0')),
+           walk1: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk1')),
+           pet:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'pet')) },
+  cat:   { walk0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk0')),
+           walk1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk1')),
+           lay:   makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
+  hedge: { walk0: makeSprite(60,40,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
+           walk1: makeSprite(60,40,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
+  tree:  { idle:  makeSprite(60,100,(r,g,s)=>drawTree(r,g,s)) }
+};
+
+// ===================== WORLD =====================
+const colliders = [];   // {x,y,w,h}
+function block(x,y,w,h){ colliders.push({x,y,w,h}); }
+
+const BUILDINGS = [
+  {x:  90, y:  80, w:340, h:150, c:PAL.panel1, fl:3},
+  {x: 520, y:  60, w:180, h:220, c:PAL.panel2, fl:4},
+  {x:1650, y: 100, w:260, h:160, c:PAL.panel3, fl:3},
+  {x:  80, y: 950, w:200, h:230, c:PAL.panel4, fl:4},
+  {x: 620, y:1180, w:360, h:150, c:PAL.panel2, fl:3},
+  {x:1620, y:1150, w:300, h:170, c:PAL.panel1, fl:3},
+];
+const HROAD = {y: 700, h: 120};                    // horizontal road
+const VROAD = {x: 1280, w: 110};                   // vertical road
+const PARK  = [[300,330],[760,300],[880,560],[700,660],[330,640],[230,470]];
+const CARS = [
+  {x: 860, y: 660, w: 96, h: 40, c:PAL.car1},
+  {x:1030, y: 662, w: 96, h: 40, c:PAL.car2},
+  {x:1470, y: 828, w: 96, h: 40, c:PAL.car3},
+  {x: 300, y: 826, w: 96, h: 40, c:PAL.car2},
+];
+const BINS = [ {x:460, y:250}, {x:1600, y:300}, {x:1010, y:1160} ];
+const TREES = [ [420,520],[560,430],[700,560],[360,430],[620,620],
+                [180,760],[1750,560],[1850,900],[500,1080],[1180,240],[900,980] ];
+
+BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
+CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
+BINS.forEach(b => block(b.x, b.y, 44, 30));
+TREES.forEach(t => block(t[0] - 8, t[1] - 10, 16, 12));
+
+function drawWorld(rc, g, s){
+  g.fillStyle = PAPER; g.fillRect(0, 0, WORLD_W, WORLD_H);
+
+  // pink pavement blobs — courtyards
+  rc.polygon([[60,40],[760,30],[780,300],[70,320]],
+    opts(s+1, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+  rc.polygon([[1560,60],[1960,70],[1950,420],[1580,400]],
+    opts(s+2, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+  rc.polygon([[60,900],[1000,920],[1010,1380],[70,1390]],
+    opts(s+3, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+  rc.polygon([[1540,1060],[1950,1080],[1940,1400],[1550,1390]],
+    opts(s+4, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+
+  // park
+  rc.polygon(PARK, opts(s+5, PAL.green, 'zigzag', {hachureGap:8, fillWeight:2, strokeWidth:2}));
+  // park path
+  rc.curve([[320,600],[520,520],[700,480],[860,540]],
+    opts(s+6, null, null, {stroke:PAL.pink, strokeWidth:10, roughness:2.6}));
+
+  // roads
+  rc.rectangle(0, HROAD.y, WORLD_W, HROAD.h,
+    opts(s+7, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
+  rc.rectangle(VROAD.x, 0, VROAD.w, WORLD_H,
+    opts(s+8, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
+  // dashed centre lines
+  for (let x = 30; x < WORLD_W - 40; x += 90){
+    if (x > VROAD.x - 40 && x < VROAD.x + VROAD.w) continue;
+    rc.line(x, HROAD.y + 60, x + 42, HROAD.y + 60,
+      opts(s+9+x, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
+  }
+  for (let y = 30; y < WORLD_H - 40; y += 90){
+    if (y > HROAD.y - 40 && y < HROAD.y + HROAD.h) continue;
+    rc.line(VROAD.x + 55, y, VROAD.x + 55, y + 42,
+      opts(s+11+y, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
+  }
+  // crosswalks (zebra)
+  for (let i = 0; i < 6; i++){
+    rc.rectangle(1090 + i*2, HROAD.y + 8 + i*18, 60, 12,
+      opts(s+13+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
+    rc.rectangle(VROAD.x + 6 + i*17, 560 + (i%2)*3, 12, 56,
+      opts(s+20+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
+  }
+
+  // buildings — paneláky with misaligned windows
+  BUILDINGS.forEach((b, bi) => {
+    rc.rectangle(b.x, b.y, b.w, b.h,
+      opts(s+30+bi, b.c, 'hachure', {hachureGap:6, fillWeight:2.2, strokeWidth:2.6, bowing:3}));
+    const cols = Math.floor(b.w / 46), rows = b.fl;
+    for (let r = 0; r < rows; r++){
+      for (let c = 0; c < cols; c++){
+        const jx = ((bi*7 + r*3 + c*5) % 7) - 3;   // deterministic jitter
+        const jy = ((bi*5 + r*7 + c*3) % 5) - 2;
+        const wx = b.x + 18 + c * (b.w - 30) / cols + jx;
+        const wy = b.y + 14 + r * (b.h - 24) / rows + jy;
+        const lit = (bi*13 + r*5 + c*7) % 9 === 0;
+        rc.rectangle(wx, wy, 20, 24,
+          opts(s+40 + bi*100 + r*10 + c, lit ? PAL.winLit : PAL.win, 'solid',
+            {strokeWidth:1.6, roughness:1.7}));
+      }
+    }
+    // door
+    rc.rectangle(b.x + b.w/2 - 12, b.y + b.h - 30, 24, 30,
+      opts(s+38+bi, PAL.hairM, 'hachure', {hachureGap:3, strokeWidth:2}));
+  });
+
+  // cars — wobbly Škodas
+  CARS.forEach((c, i) => {
+    rc.polygon([[c.x, c.y+c.h-10],[c.x+8, c.y+8],[c.x+26, c.y],[c.x+c.w-24, c.y],
+                [c.x+c.w-6, c.y+10],[c.x+c.w, c.y+c.h-10],[c.x, c.y+c.h-10]],
+      opts(s+70+i, c.c, 'hachure', {hachureGap:4, fillWeight:2, strokeWidth:2.2}));
+    rc.rectangle(c.x+24, c.y+6, c.w-52, 14,
+      opts(s+75+i, PAL.win, 'solid', {strokeWidth:1.6, roughness:1.6}));
+    rc.circle(c.x+22, c.y+c.h-6, 16, opts(s+80+i, INK, 'solid', {roughness:1.4}));
+    rc.circle(c.x+c.w-22, c.y+c.h-6, 16, opts(s+85+i, INK, 'solid', {roughness:1.4}));
+  });
+
+  // popelnice
+  BINS.forEach((b, i) => {
+    rc.rectangle(b.x, b.y, 44, 30,
+      opts(s+90+i, '#7d8a6a', 'hachure', {hachureGap:3.4, strokeWidth:2}));
+    rc.line(b.x-4, b.y, b.x+48, b.y-2, opts(s+95+i, null, null, {strokeWidth:3}));
+  });
+
+  // benches in park
+  [[480,600],[720,510]].forEach((p, i) => {
+    rc.rectangle(p[0], p[1], 60, 10, opts(s+100+i, PAL.hairM, 'hachure', {hachureGap:3, strokeWidth:2}));
+    rc.line(p[0]+6, p[1]+10, p[0]+6, p[1]+22, opts(s+105+i, null, null, {strokeWidth:2.6}));
+    rc.line(p[0]+54, p[1]+10, p[0]+54, p[1]+22, opts(s+106+i, null, null, {strokeWidth:2.6}));
+  });
+}
+
+// pre-render world (2 boil variants)
+const worldLayers = [];
+for (let v = 0; v < 2; v++){
+  const c = document.createElement('canvas');
+  c.width = WORLD_W; c.height = WORLD_H;
+  drawWorld(rough.canvas(c), c.getContext('2d'), 500 + v * 91);
+  worldLayers.push(c);
+}
+
+// paper grain overlay
+const grain = document.createElement('canvas');
+grain.width = grain.height = 128;
+{
+  const g = grain.getContext('2d');
+  const im = g.createImageData(128, 128);
+  for (let i = 0; i < im.data.length; i += 4){
+    const n = 190 + Math.random() * 65;
+    im.data[i] = im.data[i+1] = im.data[i+2] = n; im.data[i+3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+}
+let grainPattern = null;
+
+// ===================== DIALOGUE =====================
+const HEDGE_LINES = [
+  "Chtěl bych přejít tu silnici, ale nikdy to nevypadá bezpečně. Tak čekám.",
+  "Celou noc tu někdo dělal rámus. Prý slavili. A co já?",
+  "Ten postroj ti moc sluší. Kde se dneska takový shání?",
+  "Pod lavičkou bydlí slimák, co se mnou nemluví. Ale já vím, že poslouchá.",
+  "Kdysi tu byla louka. Teď je tu trávník. Není to totéž.",
+  "Prý mám bodliny. No a? Ty máš zase vodítko.",
+  "Viděl jsem dnes žížalu tak dlouhou, že se nevešla do vyprávění.",
+  "Ta popelnice v úterý hrozně bouchá. Úterky nemám rád."
+];
+const HEDGE_ALT = [
+  "…a jak jsem říkal, ta silnice.",
+  "Ty jsi ještě tady?",
+  "Pozdravuj doma.",
+  "Už jsem ti to vyprávěl? Asi jo."
+];
+const CAT_LINES = [
+  "Ten ježek toho namluví.",
+  "Hm.",
+  "Tak jdeme dál.",
+  "Zajímavé. Asi.",
+  "Mrrr."
+];
+
+// ===================== ENTITIES =====================
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dist  = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+let chosen = null;        // 'woman' | 'man'
+let gameState = 'start';  // start | play | ending | done
+let camX = 0, camY = 0, camInit = false;
+
+const player = { x: 260, y: 1080, r: 12, kind: null, pose: 'walk0', flip: false,
+                 animT: 0, moving: false };
+const dest   = { x: 1790, y: 340, r: 12, kind: null, pose: 'walk0', flip: true };
+const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
+                 state: 'wander', orbitA: Math.random() * 6.28, orbitR: 90,
+                 sniffT: 0, target: null, stateT: 0, script: null };
+const hedgehogs = [];
+const HEDGE_SPAWNS = [
+  [980, 640], [1210, 560], [560, 760],  [760, 880],
+  [1500, 480], [420, 380], [1700, 900], [880, 1100]
+];
+HEDGE_SPAWNS.forEach((p, i) => hedgehogs.push({
+  x: p[0], y: p[1], r: 8, pose: 'walk0', flip: false, animT: 0,
+  dir: Math.random() * 6.28, moveT: 1 + Math.random() * 2, paused: false,
+  line: HEDGE_LINES[i % HEDGE_LINES.length], talked: false, cooldown: 0
+}));
+
+let bubbles = [];   // {ent, text, t, dur}
+function say(ent, text, dur){
+  bubbles = bubbles.filter(b => b.ent !== ent);
+  bubbles.push({ ent, text, t: 0, dur: dur || (1.6 + text.length * 0.055) });
+}
+let catTalkCooldown = 3;
+
+// ===================== INPUT =====================
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+
+const joy = { active: false, ox: 0, oy: 0, dx: 0, dy: 0, id: null };
+cvs.addEventListener('pointerdown', e => {
+  joy.active = true; joy.id = e.pointerId;
+  joy.ox = e.clientX; joy.oy = e.clientY; joy.dx = joy.dy = 0;
+  cvs.setPointerCapture(e.pointerId);
+});
+cvs.addEventListener('pointermove', e => {
+  if (!joy.active || e.pointerId !== joy.id) return;
+  const dx = e.clientX - joy.ox, dy = e.clientY - joy.oy;
+  const d = Math.hypot(dx, dy) || 1, m = Math.min(d, 55);
+  joy.dx = (dx / d) * (m / 55); joy.dy = (dy / d) * (m / 55);
+});
+function joyEnd(e){ if (e.pointerId === joy.id){ joy.active = false; joy.dx = joy.dy = 0; } }
+cvs.addEventListener('pointerup', joyEnd);
+cvs.addEventListener('pointercancel', joyEnd);
+
+function inputVec(){
+  let x = 0, y = 0;
+  if (keys['w'] || keys['arrowup'])    y -= 1;
+  if (keys['s'] || keys['arrowdown'])  y += 1;
+  if (keys['a'] || keys['arrowleft'])  x -= 1;
+  if (keys['d'] || keys['arrowright']) x += 1;
+  if (x || y){ const d = Math.hypot(x, y); return { x: x/d, y: y/d }; }
+  if (joy.active) return { x: joy.dx, y: joy.dy };
+  return { x: 0, y: 0 };
+}
+
+// ===================== PHYSICS =====================
+function collide(ent){
+  ent.x = clamp(ent.x, 20, WORLD_W - 20);
+  ent.y = clamp(ent.y, 20, WORLD_H - 20);
+  for (const c of colliders){
+    const ex = ent.x, ey = ent.y, r = ent.r;
+    if (ex > c.x - r && ex < c.x + c.w + r && ey > c.y - r && ey < c.y + c.h + r){
+      const pl = ex - (c.x - r), pr = (c.x + c.w + r) - ex;
+      const pt = ey - (c.y - r), pb = (c.y + c.h + r) - ey;
+      const m = Math.min(pl, pr, pt, pb);
+      if      (m === pl) ent.x = c.x - r;
+      else if (m === pr) ent.x = c.x + c.w + r;
+      else if (m === pt) ent.y = c.y - r;
+      else               ent.y = c.y + c.h + r;
+    }
+  }
+}
+
+// ===================== UPDATE =====================
+function update(dt){
+  if (gameState !== 'play' && gameState !== 'ending') return;
+
+  // ---- player ----
+  const iv = (gameState === 'play') ? inputVec() : { x: 0, y: 0 };
+  const speed = 175;
+  player.moving = !!(iv.x || iv.y);
+  if (player.moving){
+    player.x += iv.x * speed * dt;
+    player.y += iv.y * speed * dt;
+    if (iv.x) player.flip = iv.x < 0;
+    player.animT += dt;
+    player.pose = (Math.floor(player.animT / 0.24) % 2) ? 'walk1' : 'walk0';
+  } else if (gameState === 'play'){
+    player.pose = 'walk0';
+  }
+  collide(player);
+
+  // ---- cat FSM ----
+  catTalkCooldown -= dt;
+  cat.stateT += dt;
+  let catSpeed = 0, catTarget = null;
+
+  if (cat.state === 'wander'){
+    cat.orbitA += dt * 0.9 * (Math.sin(cat.stateT * 0.37) > 0 ? 1 : -1);
+    cat.orbitR = 70 + 45 * Math.sin(cat.stateT * 0.6 + 1.3)
+                    + 20 * Math.sin(cat.stateT * 1.7);
+    catTarget = { x: player.x + Math.cos(cat.orbitA) * cat.orbitR,
+                  y: player.y + Math.sin(cat.orbitA) * cat.orbitR * 0.8 };
+    catSpeed = 110 + 60 * Math.max(0, Math.sin(cat.stateT * 0.9));
+    // random sniff pause
+    cat.sniffT -= dt;
+    if (cat.sniffT <= 0){
+      if (Math.random() < 0.25) cat.sniffT = 0.8 + Math.random() * 1.4; // pause
+      else cat.sniffT = -(2 + Math.random() * 3);                        // (negative = walking window)
+    }
+    if (cat.sniffT > 0) catSpeed = 0;
+    // spot a hedgehog
+    if (catTalkCooldown <= 0){
+      for (const h of hedgehogs){
+        if (h.cooldown <= 0 && dist(cat, h) < 95){
+          cat.state = 'approach'; cat.target = h; cat.stateT = 0; break;
+        }
+      }
+    }
+  }
+  else if (cat.state === 'approach'){
+    catTarget = cat.target; catSpeed = 130;
+    cat.target.paused = true;
+    if (dist(cat, cat.target) < 30){
+      cat.state = 'lay'; cat.stateT = 0; cat.pose = 'lay';
+      const h = cat.target;
+      cat.script = [
+        { at: 0.8, fn(){ say(h, h.talked ? HEDGE_ALT[Math.floor(Math.random()*HEDGE_ALT.length)] : h.line); } },
+        { at: 4.6, fn(){ say(cat, CAT_LINES[Math.floor(Math.random()*CAT_LINES.length)]); } },
+        { at: 7.0, fn(){
+            h.talked = true; h.cooldown = 30; h.paused = false;
+            cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
+        } }
+      ];
+    } else if (cat.stateT > 4){ // gave up (leash too short etc.)
+      cat.target.paused = false;
+      cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 4;
+    }
+  }
+  else if (cat.state === 'lay'){
+    catSpeed = 0;
+    if (cat.script){
+      for (const step of cat.script){
+        if (!step.done && cat.stateT >= step.at){ step.done = true; step.fn(); }
+      }
+    }
+  }
+  else if (cat.state === 'toDest'){
+    catTarget = { x: dest.x + (dest.kind === 'man' ? 34 : -30), y: dest.y + 6 };
+    catSpeed = 120;
+    if (dist(cat, catTarget) < 14){
+      cat.state = 'petted'; cat.pose = 'lay'; cat.stateT = 0;
+      dest.pose = 'pet';
+      say(cat, 'Prrrr.', 3);
+      setTimeout(showEnd, 2200);
+    }
+  }
+
+  if (catTarget && catSpeed > 0){
+    const d = dist(cat, catTarget);
+    if (d > 6){
+      const vx = (catTarget.x - cat.x) / d, vy = (catTarget.y - cat.y) / d;
+      cat.x += vx * catSpeed * dt;
+      cat.y += vy * catSpeed * dt;
+      cat.flip = vx < 0;
+      cat.animT += dt;
+      cat.pose = (Math.floor(cat.animT / 0.22) % 2) ? 'walk1' : 'walk0';
+    } else if (cat.state === 'wander'){
+      cat.pose = 'walk0';
+    }
+  }
+  // leash constraint (not during ending — leash unclipped)
+  if (gameState === 'play'){
+    const d = dist(cat, player);
+    if (d > LEASH_LEN){
+      const vx = (cat.x - player.x) / d, vy = (cat.y - player.y) / d;
+      cat.x = player.x + vx * LEASH_LEN;
+      cat.y = player.y + vy * LEASH_LEN;
+      if (cat.state === 'lay' && d > LEASH_LEN + 2){ /* dragged out of nap */ }
+    }
+  }
+  collide(cat);
+
+  // ---- hedgehogs ----
+  for (const h of hedgehogs){
+    h.cooldown -= dt;
+    if (h.paused) continue;
+    h.moveT -= dt;
+    if (h.moveT <= 0){
+      h.dir = Math.random() * Math.PI * 2;
+      h.moveT = 1.5 + Math.random() * 3;
+      if (Math.random() < 0.3) h.moveT = -1 - Math.random(); // pause (negative)
+    }
+    if (h.moveT > 0){
+      h.x += Math.cos(h.dir) * 26 * dt;
+      h.y += Math.sin(h.dir) * 26 * dt;
+      h.flip = Math.cos(h.dir) < 0;
+      h.animT += dt;
+      h.pose = (Math.floor(h.animT / 0.3) % 2) ? 'walk1' : 'walk0';
+      collide(h);
+    }
+  }
+
+  // ---- bubbles ----
+  bubbles = bubbles.filter(b => (b.t += dt) < b.dur);
+
+  // ---- reach destination ----
+  if (gameState === 'play' && dist(player, dest) < 95 &&
+      (cat.state === 'wander' || cat.state === 'approach')){
+    gameState = 'ending';
+    if (cat.target) cat.target.paused = false;
+    cat.state = 'toDest'; cat.stateT = 0;
+    player.pose = 'walk0';
+  }
+
+  // ---- camera ----
+  const tx = clamp(player.x - VW / 2, 0, Math.max(0, WORLD_W - VW));
+  const ty = clamp(player.y - VH / 2, 0, Math.max(0, WORLD_H - VH));
+  if (!camInit){ camX = tx; camY = ty; camInit = true; }
+  camX += (tx - camX) * Math.min(1, dt * 4);
+  camY += (ty - camY) * Math.min(1, dt * 4);
+}
+
+function showEnd(){
+  gameState = 'done';
+  const who = chosen === 'woman' ? 'On' : 'Ona';
+  document.getElementById('endText').innerHTML =
+    who + ' se skloní a drbe kočku za ušima. Kočka přede.<br><br>' +
+    'Došli jste. Ale nejhezčí byla stejně ta cesta —<br>i s těmi ježky.';
+  document.getElementById('endScreen').classList.remove('hidden');
+}
+
+// ===================== RENDER =====================
+function drawSprite(spr, variant, ent, anchorH){
+  const img = spr[variant];
+  const w = spr.w, h = spr.h;
+  ctx.save();
+  ctx.translate(ent.x - camX, ent.y - camY);
+  if (ent.flip) ctx.scale(-1, 1);
+  ctx.drawImage(img, -w / 2, -(anchorH !== undefined ? anchorH : h), w, h);
+  ctx.restore();
+}
+
+function shadow(ent, rw, rh){
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.ellipse(ent.x - camX, ent.y - camY + 2, rw, rh, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function wob(n, seedShift){ // tiny deterministic wobble for hand-drawn HUD bits
+  return Math.sin(n * 12.9898 + seedShift * 78.233) * 2;
+}
+
+function drawLeash(variant){
+  if (gameState !== 'play') return;
+  const hx = player.x - camX + (player.flip ? -10 : 10);
+  const hy = player.y - camY - 44;
+  const cx2 = cat.x - camX, cy2 = cat.y - camY - 14;
+  const d = Math.hypot(cx2 - hx, cy2 - hy);
+  const slack = Math.max(0, LEASH_LEN - d);
+  const sag = Math.min(42, slack * 0.4);
+  const mx = (hx + cx2) / 2 + wob(1, variant), my = (hy + cy2) / 2 + sag;
+  ctx.save();
+  ctx.strokeStyle = PAL.leash;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(hx, hy);
+  ctx.quadraticCurveTo(mx, my, cx2, cy2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function wrapText(text, maxW){
+  const words = text.split(' ');
+  const lines = []; let line = '';
+  ctx.font = '15px "Segoe Print","Bradley Hand","Comic Sans MS",cursive';
+  for (const w of words){
+    const t = line ? line + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; }
+    else line = t;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawBubbles(variant){
+  for (const b of bubbles){
+    const e = b.ent;
+    const top = (e === cat || hedgehogs.includes(e)) ? 42 : 116;
+    const lines = wrapText(b.text, 190);
+    const lw = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const bw = lw + 24, bh = lines.length * 19 + 16;
+    let bx = e.x - camX - bw / 2, by = e.y - camY - top - bh - 14;
+    bx = clamp(bx, 6, VW - bw - 6); by = clamp(by, 6, VH - bh - 6);
+    ctx.save();
+    // hand-wobbled rounded rect
+    ctx.fillStyle = '#fdf8ea';
+    ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.beginPath();
+    const r = 10, w1 = wob(bx, variant), w2 = wob(by, variant + 1);
+    ctx.moveTo(bx + r, by + w1 * 0.4);
+    ctx.lineTo(bx + bw - r, by - w2 * 0.4);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw + w1 * 0.3, by + r);
+    ctx.lineTo(bx + bw + w2 * 0.3, by + bh - r);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh + w1 * 0.4);
+    ctx.lineTo(bx + r, by + bh - w2 * 0.4);
+    ctx.quadraticCurveTo(bx, by + bh, bx - w1 * 0.3, by + bh - r);
+    ctx.lineTo(bx - w2 * 0.3, by + r);
+    ctx.quadraticCurveTo(bx, by, bx + r, by + w1 * 0.4);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // tail
+    ctx.beginPath();
+    ctx.moveTo(clamp(e.x - camX - 6, bx + 12, bx + bw - 24), by + bh - 1);
+    ctx.lineTo(e.x - camX, e.y - camY - top + 4);
+    ctx.lineTo(clamp(e.x - camX + 8, bx + 16, bx + bw - 12), by + bh - 1);
+    ctx.closePath();
+    ctx.fillStyle = '#fdf8ea'; ctx.fill();
+    ctx.strokeStyle = INK; ctx.stroke();
+    // text
+    ctx.fillStyle = INK;
+    ctx.font = '15px "Segoe Print","Bradley Hand","Comic Sans MS",cursive';
+    lines.forEach((l, i) => ctx.fillText(l, bx + 12, by + 22 + i * 19));
+    ctx.restore();
+  }
+}
+
+function drawHudArrow(variant){
+  if (gameState !== 'play') return;
+  const sx = dest.x - camX, sy = dest.y - camY - 60;
+  if (sx > 30 && sx < VW - 30 && sy > 30 && sy < VH - 30) return; // visible
+  const cx2 = VW / 2, cy2 = VH / 2;
+  const a = Math.atan2(sy - cy2, sx - cx2);
+  const px = clamp(cx2 + Math.cos(a) * (Math.min(VW, VH) / 2 - 46), 40, VW - 40);
+  const py = clamp(cy2 + Math.sin(a) * (Math.min(VW, VH) / 2 - 46), 40, VH - 40);
+  ctx.save();
+  ctx.translate(px, py); ctx.rotate(a);
+  ctx.strokeStyle = INK; ctx.fillStyle = '#fdf8ea'; ctx.lineWidth = 2.4;
+  const j = wob(3, variant);
+  ctx.beginPath();
+  ctx.moveTo(16 + j * 0.4, 0); ctx.lineTo(-10, -11 + j * 0.3);
+  ctx.lineTo(-4, 0); ctx.lineTo(-10 - j * 0.3, 11);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawJoystick(){
+  if (!joy.active) return;
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = INK; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(joy.ox, joy.oy, 52, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.arc(joy.ox + joy.dx * 42, joy.oy + joy.dy * 42, 17, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function render(now){
+  const variant = Math.floor(now / BOIL_MS) % 2;
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, VW, VH);
+  if (gameState === 'start') return;
+
+  // world
+  ctx.drawImage(worldLayers[variant],
+    camX, camY, VW, VH, 0, 0, VW, VH);
+
+  // shadows
+  shadow(player, 16, 5); shadow(dest, 16, 5); shadow(cat, 18, 5);
+  hedgehogs.forEach(h => shadow(h, 14, 4));
+  TREES.forEach(t => {
+    const e = { x: t[0], y: t[1] };
+    shadow(e, 20, 6);
+  });
+
+  drawLeash(variant);
+
+  // y-sorted entities
+  const ents = [];
+  ents.push({ y: player.y, draw: () => drawSprite(SPR[player.kind][player.pose], variant, player) });
+  ents.push({ y: dest.y,   draw: () => drawSprite(SPR[dest.kind][dest.pose], variant, dest) });
+  ents.push({ y: cat.y,    draw: () => drawSprite(SPR.cat[cat.pose], variant, cat) });
+  hedgehogs.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hedge[h.pose], variant, h) }));
+  TREES.forEach(t => ents.push({ y: t[1], draw: () => drawSprite(SPR.tree.idle, variant, { x: t[0], y: t[1], flip: false }) }));
+  ents.sort((a, b) => a.y - b.y);
+  ents.forEach(e => e.draw());
+
+  drawBubbles(variant);
+  drawHudArrow(variant);
+  drawJoystick();
+
+  // paper grain
+  if (!grainPattern) grainPattern = ctx.createPattern(grain, 'repeat');
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = grainPattern;
+  ctx.fillRect(0, 0, VW, VH);
+  ctx.restore();
+}
+
+// ===================== LOOP =====================
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  update(dt);
+  render(now);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ===================== START SCREEN =====================
+function paintPortrait(id, kind){
+  const c = document.getElementById(id);
+  const g = c.getContext('2d');
+  g.fillStyle = '#fdf6e6'; g.fillRect(0, 0, c.width, c.height);
+  const img = SPR[kind].walk0[0];
+  g.drawImage(img, 60 - SPR[kind].walk0.w * 0.7, 172 - SPR[kind].walk0.h * 1.4,
+    SPR[kind].walk0.w * 1.4, SPR[kind].walk0.h * 1.4);
+}
+paintPortrait('pw', 'woman');
+paintPortrait('pm', 'man');
+
+function pick(kind){
+  chosen = kind;
+  player.kind = kind;
+  dest.kind = kind === 'woman' ? 'man' : 'woman';
+  document.getElementById('startScreen').classList.add('hidden');
+  gameState = 'play';
+  say(cat, 'Mňau. Tak jdem.', 2.4);
+}
+document.getElementById('pickWoman').addEventListener('click', () => pick('woman'));
+document.getElementById('pickMan').addEventListener('click', () => pick('man'));
+</script>
+</body>
+</html>
