@@ -359,11 +359,29 @@ function drawMound(rc, g, s){
     opts(s, '#a67c52', 'hachure', {hachureGap:2.5, strokeWidth:1.6}));
 }
 
-function drawTree(rc, g, s){
-  rc.line(30, 96, 30, 62, opts(s, null, null, {stroke:PAL.hairM, strokeWidth:6, bowing:3}));
-  rc.circle(30, 40, 52, opts(s+1, PAL.darkgreen, 'cross-hatch', {hachureGap:5, fillWeight:1.8, bowing:3}));
-  rc.circle(14, 52, 26, opts(s+2, PAL.green, 'hachure', {hachureGap:4, fillWeight:1.8}));
-  rc.circle(46, 50, 28, opts(s+3, PAL.green, 'hachure', {hachureGap:4, fillWeight:1.8}));
+function drawTree(rc, g, s, kind){
+  if (kind === 1){
+    // tall slim poplar
+    rc.line(26, 112, 26, 52, opts(s, null, null, {stroke:PAL.hairM, strokeWidth:5, bowing:3}));
+    rc.ellipse(26, 62, 30, 46, opts(s+1, PAL.darkgreen, 'cross-hatch', {hachureGap:5, fillWeight:1.8, bowing:3}));
+    rc.ellipse(26, 32, 24, 42, opts(s+2, PAL.green, 'hachure', {hachureGap:4, fillWeight:1.8}));
+    rc.ellipse(26, 12, 16, 20, opts(s+3, PAL.green, 'hachure', {hachureGap:3.4, fillWeight:1.8}));
+  } else if (kind === 2){
+    // short bushy one with berries
+    rc.line(32, 80, 32, 58, opts(s, null, null, {stroke:PAL.hairM, strokeWidth:7, bowing:3}));
+    rc.circle(16, 52, 28, opts(s+2, PAL.darkgreen, 'hachure', {hachureGap:4, fillWeight:1.8}));
+    rc.circle(48, 50, 30, opts(s+3, PAL.darkgreen, 'hachure', {hachureGap:4, fillWeight:1.8}));
+    rc.circle(32, 42, 46, opts(s+1, PAL.green, 'cross-hatch', {hachureGap:5, fillWeight:1.8, bowing:3}));
+    rc.circle(22, 38, 3, opts(s+4, PAL.pink, 'solid', {stroke:PAL.pink, roughness:.6}));
+    rc.circle(40, 48, 3, opts(s+5, PAL.pink, 'solid', {stroke:PAL.pink, roughness:.6}));
+    rc.circle(34, 28, 3, opts(s+6, PAL.pink, 'solid', {stroke:PAL.pink, roughness:.6}));
+  } else {
+    // classic round one
+    rc.line(30, 96, 30, 62, opts(s, null, null, {stroke:PAL.hairM, strokeWidth:6, bowing:3}));
+    rc.circle(30, 40, 52, opts(s+1, PAL.darkgreen, 'cross-hatch', {hachureGap:5, fillWeight:1.8, bowing:3}));
+    rc.circle(14, 52, 26, opts(s+2, PAL.green, 'hachure', {hachureGap:4, fillWeight:1.8}));
+    rc.circle(46, 50, 28, opts(s+3, PAL.green, 'hachure', {hachureGap:4, fillWeight:1.8}));
+  }
 }
 
 // build all sprites
@@ -382,7 +400,9 @@ const SPR = {
            lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
   hedge: { walk0: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
            walk1: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
-  tree:  { idle:  makeSprite(60,100,(r,g,s)=>drawTree(r,g,s)) },
+  tree:  { v0: makeSprite(60,100,(r,g,s)=>drawTree(r,g,s,0)),
+           v1: makeSprite(52,116,(r,g,s)=>drawTree(r,g,s,1)),
+           v2: makeSprite(64, 84,(r,g,s)=>drawTree(r,g,s,2)) },
   tram:  { idle:  makeSprite(230,80,(r,g,s)=>drawTram(r,g,s)) },
   face:  { woman: makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'woman')),
            man:   makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'man')) },
@@ -653,7 +673,7 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  state: 'wander', orbitA: Math.random() * 6.28, orbitR: 90,
                  sniffT: 0, target: null, stateT: 0, script: null,
                  treeSpot: null, treeCooldown: 6, zOff: 0,
-                 wormTarget: null, carriedWorm: null, wormEatAt: null };
+                 wormTarget: null, carriedWorm: null, wormEatAt: null, dragT: 0 };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
 let wormTimer = 15;
@@ -1000,7 +1020,19 @@ function update(dt){
       const vx = (cat.x - player.x) / d, vy = (cat.y - player.y) / d;
       cat.x = player.x + vx * LEASH_LEN;
       cat.y = player.y + vy * LEASH_LEN;
-      if (cat.state === 'lay' && d > LEASH_LEN + 2){ /* dragged out of nap */ }
+      // dragged for a while — he gives in, gets up and walks along
+      cat.dragT += dt;
+      if (cat.dragT > 0.6){
+        if (cat.state === 'lay'){
+          if (cat.target){ cat.target.paused = false; cat.target.cooldown = 10; }
+          cat.script = null;
+          cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 5;
+          say(cat, 'No dobře, už jdu.', 1.6);
+        }
+        if (cat.sniffT > 0) cat.sniffT = -2;   // no sniff-sitting while towed
+      }
+    } else {
+      cat.dragT = 0;
     }
   }
   collide(cat);
@@ -1305,7 +1337,7 @@ function render(now){
         { x: cat.x + (cat.flip ? -26 : 26), y: cat.y - 10 - cat.zOff, flip: cat.flip });
   } });
   hedgehogs.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hedge[h.pose], variant, h) }));
-  TREES.forEach(t => ents.push({ y: t[1], draw: () => drawSprite(SPR.tree.idle, variant, { x: t[0], y: t[1], flip: false }) }));
+  TREES.forEach((t, i) => ents.push({ y: t[1], draw: () => drawSprite(SPR.tree['v' + (i % 3)], variant, { x: t[0], y: t[1], flip: false }) }));
   ents.sort((a, b) => a.y - b.y);
   ents.forEach(e => e.draw());
 
