@@ -179,6 +179,9 @@ function drawMan(rc, g, s, pose){
   } else if (pose === 'walk1'){
     rc.line(29, 94, 28, 118, opts(s+1, null, null, {strokeWidth:4}));
     rc.line(35, 94, 37, 118, opts(s+2, null, null, {strokeWidth:4}));
+  } else if (pose === 'phone'){
+    rc.line(29, 94, 27, 118, opts(s+1, null, null, {strokeWidth:4}));
+    rc.line(35, 94, 37, 118, opts(s+2, null, null, {strokeWidth:4}));
   } else {
     rc.line(24, 112, 44, 115, opts(s+1, null, null, {strokeWidth:4}));
   }
@@ -188,6 +191,12 @@ function drawMan(rc, g, s, pose){
   // arms
   if (kneel){
     rc.line(40, 58+oy, 60, 92, opts(s+4, null, null, {strokeWidth:3.4}));
+  } else if (pose === 'phone'){
+    // both forearms up, phone held in front
+    rc.line(24, 56, 28, 72, opts(s+4, null, null, {strokeWidth:3.4}));
+    rc.line(40, 56, 36, 72, opts(s+5, null, null, {strokeWidth:3.4}));
+    rc.rectangle(27, 65, 9, 12, opts(s+13, '#b7c9e0', 'solid', {strokeWidth:1.6, roughness:1}));
+    rc.line(29, 68, 34, 68, opts(s+14, null, null, {stroke:'#eef6ff', strokeWidth:1.2, roughness:.8}));
   } else {
     rc.line(24, 56, 15, 82, opts(s+4, null, null, {strokeWidth:3.4}));
     rc.line(40, 56, 48, 80, opts(s+5, null, null, {strokeWidth:3.4}));
@@ -246,22 +255,23 @@ function drawCat(rc, g, s, pose){
     rc.line(44, 30, 46, 42, opts(s+14, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
     rc.line(35, 32, 44, 30, opts(s+17, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
   } else if (pose === 'climb'){
-    // clinging to the tree — vertical, head up, legs out to the sides
-    rc.curve([[24,58],[14,64],[10,70]], opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:4}));
-    rc.line(16, 32,  3, 28, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
-    rc.line(16, 46,  4, 44, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
-    rc.line(32, 32, 45, 28, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
-    rc.line(32, 46, 44, 44, opts(s+5, null, null, {stroke:PAL.cat, strokeWidth:3}));
-    // upright body + head on top
-    rc.ellipse(24, 42, 18, 36, co);
-    rc.ellipse(24, 16, 17, 14, opts(s+6, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
-    rc.polygon([[15,10],[17,2],[22,8]], opts(s+7, PAL.cat, 'solid'));
-    rc.polygon([[26,8],[31,2],[33,10]], opts(s+8, PAL.cat, 'solid'));
-    rc.circle(20, 15, 3, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
-    rc.circle(28, 15, 3, opts(s+11, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    // clinging to the trunk — vertical, head up; all four paws grip toward
+    // ONE side (the tree). The renderer flips this to match the cat's side.
+    rc.curve([[20,56],[12,63],[9,70]], opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    rc.line(28, 26, 45, 22, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(29, 35, 46, 35, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(29, 44, 46, 46, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(28, 52, 44, 56, opts(s+5, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    // upright body + head on top (biased left so the paws reach right)
+    rc.ellipse(22, 40, 18, 36, co);
+    rc.ellipse(22, 15, 17, 14, opts(s+6, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    rc.polygon([[13,9],[15,1],[20,7]], opts(s+7, PAL.cat, 'solid'));
+    rc.polygon([[24,7],[29,1],[31,9]], opts(s+8, PAL.cat, 'solid'));
+    rc.circle(18, 14, 3, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    rc.circle(26, 14, 3, opts(s+11, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
     // postroj across the chest
-    rc.line(16, 30, 33, 29, opts(s+12, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
-    rc.line(17, 36, 32, 35, opts(s+13, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
+    rc.line(14, 28, 31, 27, opts(s+12, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+    rc.line(15, 34, 30, 33, opts(s+13, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
   } else {
     const step = pose === 'walk1';
     // legs
@@ -391,7 +401,8 @@ const SPR = {
            pet:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'pet')) },
   man:   { walk0: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk0')),
            walk1: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk1')),
-           pet:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'pet')) },
+           pet:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'pet')),
+           phone: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'phone')) },
   cat:   { walk0:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk0')),
            walk1:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk1')),
            stalk0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk0')),
@@ -438,6 +449,9 @@ const LAMPS = [ [300,690],[700,690],[1100,690],[1520,690],[1880,690],
                 [500,845],[900,845],[1460,845],[1780,845],
                 [1250,300],[1250,1010],[1420,480],[1420,1200],
                 [450,580],[720,470] ];
+// green ground softening the building courtyards [cx,cy,width,height]
+const GRASS = [ [430,300,250,72], [1780,320,220,72],
+                [1780,1050,210,84], [430,1120,200,84], [1120,1000,220,74] ];
 
 BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
 CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
@@ -506,6 +520,15 @@ function drawWorld(rc, g, s){
     rc.rectangle(VROAD.x + 6 + i*17, 560 + (i%2)*3, 12, 56,
       opts(9020+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
   }
+
+  // green ground: soft grass around the buildings and a patch under every
+  // tree, so nothing green sprouts straight out of bare paper or pavement.
+  // Drawn after the roads (fixed seeds, no boil) so roadside trees keep a
+  // visible verge, but before the buildings so it never covers a facade.
+  GRASS.forEach((gr, i) => rc.ellipse(gr[0], gr[1], gr[2], gr[3],
+    opts(9200+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
+  TREES.forEach((t, i) => rc.ellipse(t[0], t[1]+8, 88, 48,
+    opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
 
   // buildings — paneláky with misaligned windows
   BUILDINGS.forEach((b, bi) => {
@@ -658,7 +681,7 @@ let gameState = 'start';  // start | play | ending | done
 let camX = 0, camY = 0, camInit = false;
 
 const player = { x: 260, y: 1080, r: 12, kind: null, pose: 'walk0', flip: false,
-                 animT: 0, moving: false };
+                 animT: 0, moving: false, idleT: 0, special: null, specialT: 0 };
 // the other person arrives later by tram: away -> walking -> waiting
 const dest   = { x: 1790, y: 340, r: 12, kind: null, pose: 'walk0', flip: true,
                  state: 'away', animT: 0 };
@@ -759,8 +782,21 @@ function update(dt){
     if (iv.x) player.flip = iv.x < 0;
     player.animT += dt;
     player.pose = (Math.floor(player.animT / 0.24) % 2) ? 'walk1' : 'walk0';
+    player.idleT = 0; player.special = null;
   } else if (gameState === 'play'){
-    player.pose = 'walk0';
+    // idle quirks: the boy checks his phone, the girl crouches to pet the cat
+    player.idleT += dt;
+    if (player.special){
+      player.specialT -= dt;
+      if (player.specialT <= 0){ player.special = null; player.idleT = 0; }
+    } else if (player.idleT > 3 && Math.random() < dt * 0.5){
+      if (chosen === 'man'){
+        player.special = 'phone'; player.specialT = 3 + Math.random() * 3;
+      } else if (dist(player, cat) < 64){
+        player.special = 'pet'; player.specialT = 3 + Math.random() * 2;
+      }
+    }
+    player.pose = player.special || 'walk0';
   }
   collide(player);
 
@@ -1340,7 +1376,9 @@ function render(now){
   // while in a tree, sort just below the tree's anchor so he draws over its canopy
   ents.push({ y: (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.y + 12 : cat.y,
               draw: () => {
-    drawSprite(SPR.cat[cat.pose], variant, { x: cat.x, y: cat.y - cat.zOff, flip: cat.flip });
+    // in a tree, face so the paws grip the trunk (flip when on the tree's right)
+    const catFlip = (cat.state === 'inTree' && cat.treeSpot) ? (cat.x > cat.treeSpot.x) : cat.flip;
+    drawSprite(SPR.cat[cat.pose], variant, { x: cat.x, y: cat.y - cat.zOff, flip: catFlip });
     if (cat.carriedWorm)
       drawSprite(SPR.worm.idle, variant,
         { x: cat.x + (cat.flip ? -26 : 26), y: cat.y - 10 - cat.zOff, flip: cat.flip });
