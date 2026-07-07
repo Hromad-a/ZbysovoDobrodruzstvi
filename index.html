@@ -428,6 +428,43 @@ function drawPoop(rc, g, s){
   rc.ellipse(9, 5, 6, 4, opts(s+2, '#6b4a2f', 'solid', {roughness:1.4}));
 }
 
+// generic townsfolk — deliberately different from the two mains: rounder
+// head, boxy coat, sometimes a hat, and a varied clothing/hair palette
+function drawPed(rc, g, s, pose, pal){
+  if (pose === 'walk0'){
+    rc.line(27, 100, 21, 120, opts(s+1, null, null, {strokeWidth:3.4}));
+    rc.line(37, 100, 43, 120, opts(s+2, null, null, {strokeWidth:3.4}));
+  } else {
+    rc.line(29, 100, 28, 120, opts(s+1, null, null, {strokeWidth:3.4}));
+    rc.line(35, 100, 37, 120, opts(s+2, null, null, {strokeWidth:3.4}));
+  }
+  // boxy coat, shorter than the mains
+  rc.polygon([[23,58],[41,58],[46,102],[18,102]],
+    opts(s+3, pal.coat, 'hachure', {hachureGap:5, fillWeight:2, strokeWidth:2.2}));
+  // arms
+  if (pose === 'walk0'){
+    rc.line(24, 62, 15, 90, opts(s+4, null, null, {strokeWidth:3.2}));
+    rc.line(40, 62, 49, 88, opts(s+5, null, null, {strokeWidth:3.2}));
+  } else {
+    rc.line(24, 62, 19, 92, opts(s+4, null, null, {strokeWidth:3.2}));
+    rc.line(40, 62, 45, 90, opts(s+5, null, null, {strokeWidth:3.2}));
+  }
+  // short neck + round head (not the mains' elongated oval)
+  rc.line(32, 58, 32, 50, opts(s+6, null, null, {strokeWidth:4}));
+  rc.circle(32, 38, 22, opts(s+7, PAL.skin, 'solid', {roughness:1.4, bowing:1.6}));
+  // rounded hair cap over the crown
+  rc.arc(32, 34, 28, 26, Math.PI * 0.98, Math.PI * 2.02, true,
+    opts(s+8, pal.hair, 'hachure', {hachureGap:2.6, fillWeight:2.2}));
+  if (pal.hat){
+    rc.polygon([[23,28],[41,28],[37,14],[27,14]], opts(s+9, pal.hat, 'hachure', {hachureGap:3, fillWeight:2}));
+    rc.ellipse(32, 28, 36, 8, opts(s+10, pal.hat, 'solid', {roughness:1.4}));   // brim
+  }
+  // face
+  rc.line(27, 38, 30, 38, opts(s+11, null, null, {strokeWidth:1.6, roughness:1}));
+  rc.line(35, 38, 38, 38, opts(s+12, null, null, {strokeWidth:1.6, roughness:1}));
+  rc.line(30, 45, 34, 45, opts(s+13, null, null, {strokeWidth:1.4, roughness:1}));
+}
+
 function drawTree(rc, g, s, kind){
   if (kind === 1){
     // tall slim poplar
@@ -453,6 +490,16 @@ function drawTree(rc, g, s, kind){
   }
 }
 
+// townsfolk clothing/hair palettes (distinct from the two mains)
+const PED_PALS = [
+  { coat:'#6a7fae', hair:'#33333a', hat:'#2f3a52' },  // blue coat, dark hair, cap
+  { coat:'#8aa06a', hair:'#9a968e', hat:null },        // green coat, greying hair
+  { coat:'#b0708e', hair:'#caa64e', hat:null },        // mauve coat, blonde
+  { coat:'#7d8a6a', hair:'#2b2b30', hat:'#5c5240' },   // olive coat, black hair, hat
+  { coat:'#9a8fb4', hair:'#d8d6cf', hat:null },        // lilac coat, white hair
+  { coat:'#c2704e', hair:'#3f2d20', hat:'#6f4a30' },   // brick coat, brown hair, hat
+];
+
 // build all sprites
 const SPR = {
   woman: { walk0: makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'walk0')),
@@ -462,6 +509,9 @@ const SPR = {
            walk1: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk1')),
            pet:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'pet')),
            phone: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'phone')) },
+  ped:   PED_PALS.map(pal => ({
+           walk0: makeSprite(64,120,(r,g,s)=>drawPed(r,g,s,'walk0',pal)),
+           walk1: makeSprite(64,120,(r,g,s)=>drawPed(r,g,s,'walk1',pal)) })),
   cat:   { walk0:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk0')),
            walk1:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk1')),
            stalk0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk0')),
@@ -838,8 +888,8 @@ HEDGE_SPAWNS.forEach((p, i) => hedgehogs.push({
 const DOG_TYPES = ['brown', 'tan', 'grey', 'cream'];
 const peds = [];
 function spawnPed(x, y, withDog, leashed){
-  const kind = Math.random() < 0.5 ? 'woman' : 'man';
-  const ped = { x, y, kind, r: 12, dir: Math.random() * 6.28, speed: 38 + Math.random() * 26,
+  const variant = Math.floor(Math.random() * PED_PALS.length);
+  const ped = { x, y, variant, r: 12, dir: Math.random() * 6.28, speed: 38 + Math.random() * 26,
                 moveT: 2 + Math.random() * 3, animT: 0, pose: 'walk0', flip: false, dog: null };
   if (withDog){
     ped.dog = { type: DOG_TYPES[Math.floor(Math.random() * DOG_TYPES.length)],
@@ -1712,7 +1762,7 @@ function render(now){
   movingCars.forEach(mc => ents.push({ y: mc.y, draw: () =>
     drawSprite(SPR.car[mc.spr], variant, { x: mc.x, y: mc.y, flip: mc.vx < 0 }) }));
   peds.forEach(p => {
-    ents.push({ y: p.y, draw: () => drawSprite(SPR[p.kind][p.pose], variant, p) });
+    ents.push({ y: p.y, draw: () => drawSprite(SPR.ped[p.variant][p.pose], variant, p) });
     if (p.dog) ents.push({ y: p.dog.y, draw: () => drawSprite(
       SPR.dog[p.dog.type + (p.dog.pose === 'walk1' ? '1' : '0')], variant,
       { x: p.dog.x, y: p.dog.y, flip: p.dog.flip, scale: p.dog.scale }) });
