@@ -3,15 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Kočka na vodítku</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/rough.js/4.6.6/rough.min.js"></script>
+<title>Zbýšovo Dobrodružství</title>
+<script src="rough.min.js"></script>
 <style>
+  @font-face{
+    font-family:"Pangolin";
+    src:url("Pangolin-Regular.ttf") format("truetype");
+    font-display:swap;
+  }
   :root{
     --ink:#3a4066; --paper:#f4ead2; --pink:#e7b7b0; --green:#8fae72;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--paper);
-    font-family:"Segoe Print","Bradley Hand","Comic Sans MS","Chalkboard SE",cursive;
+    font-family:"Pangolin","Bradley Hand","Segoe Print","Comic Sans MS","Chalkboard SE",cursive;
     color:var(--ink); touch-action:none; -webkit-user-select:none; user-select:none;}
   canvas#game{display:block;width:100vw;height:100vh}
   .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
@@ -42,8 +47,8 @@
 <canvas id="game"></canvas>
 
 <div class="overlay" id="startScreen">
-  <h1>Kočka na vodítku</h1>
-  <div class="sub">Vyber, kdo dnes jde s kočkou na procházku.<br>Ten druhý čeká na druhém konci sídliště.</div>
+  <h1>Zbýšovo Dobrodružství</h1>
+  <div class="sub">Vyber, kdo dnes jde s kocourem na procházku.<br>Ten druhý se objeví na druhém konci sídliště.</div>
   <div class="chars">
     <button class="char" id="pickWoman"><canvas id="pw" width="120" height="180"></canvas>ona</button>
     <button class="char" id="pickMan"><canvas id="pm" width="120" height="180"></canvas>on</button>
@@ -60,7 +65,7 @@
 <script>
 'use strict';
 /* ============================================================
-   KOČKA NA VODÍTKU — sketchy placeholder prototype
+   ZBÝŠOVO DOBRODRUŽSTVÍ — sketchy placeholder prototype
    Rough.js art, boiling-line animation, Prague panelák vibes
    ============================================================ */
 
@@ -88,6 +93,10 @@ function resize(){
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   VW = window.innerWidth; VH = window.innerHeight;
   cvs.width = VW * DPR; cvs.height = VH * DPR;
+  // CSS size must match innerWidth/Height exactly — 100vh overshoots the
+  // visible area on mobile (URL bar), stretching the canvas so touch
+  // coordinates no longer line up with what is drawn
+  cvs.style.width = VW + 'px'; cvs.style.height = VH + 'px';
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
 window.addEventListener('resize', resize); resize();
@@ -206,8 +215,53 @@ function drawCat(rc, g, s, pose){
     // closed eyes
     rc.line(52, 27, 55, 28, opts(s+5, null, null, {stroke:PAPER, strokeWidth:1.4, roughness:.8}));
     rc.line(59, 27, 62, 28, opts(s+6, null, null, {stroke:PAPER, strokeWidth:1.4, roughness:.8}));
-    // postroj strap
+    // postroj — strap plus back piece running onto the body
     rc.line(40, 26, 42, 42, opts(s+7, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+    rc.line(31, 29, 40, 26, opts(s+8, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
+  } else if (pose === 'stalk0' || pose === 'stalk1'){
+    // stalking — low crouch, head stretched forward, locked-on eyes
+    const step = pose === 'stalk1' ? 3 : 0;
+    rc.line(20, 40, 17 + step, 46, opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(29, 40, 30 - step, 46, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(41, 40, 39 + step, 46, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(49, 40, 52 - step, 46, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    // low stretched body
+    rc.ellipse(33, 36, 46, 13, co);
+    // head low, pushed forward
+    rc.ellipse(56, 30, 18, 13, opts(s+5, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    // ears flattened back
+    rc.polygon([[47,26],[51,19],[55,25]], opts(s+6, PAL.cat, 'solid'));
+    rc.polygon([[57,25],[62,19],[64,27]], opts(s+7, PAL.cat, 'solid'));
+    // tail straight and low, tip twitching
+    rc.curve([[13,34],[4,33],[0,30 + step]], opts(s+8, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    // big focused eyes with pupils
+    rc.circle(52, 29, 4.4, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    rc.circle(59, 29, 4.4, opts(s+11, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    rc.circle(52.6, 29, 1.7, opts(s+15, INK, 'solid', {stroke:INK, roughness:.5}));
+    rc.circle(59.6, 29, 1.7, opts(s+16, INK, 'solid', {stroke:INK, roughness:.5}));
+    // whiskers forward
+    rc.line(62, 32, 70, 30, opts(s+12, null, null, {stroke:PAPER, strokeWidth:1, roughness:.8}));
+    rc.line(62, 34, 69, 35, opts(s+13, null, null, {stroke:PAPER, strokeWidth:1, roughness:.8}));
+    // postroj — red harness strap + back piece
+    rc.line(44, 30, 46, 42, opts(s+14, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+    rc.line(35, 32, 44, 30, opts(s+17, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
+  } else if (pose === 'climb'){
+    // clinging to the tree — vertical, head up, legs out to the sides
+    rc.curve([[24,58],[14,64],[10,70]], opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    rc.line(16, 32,  3, 28, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(16, 46,  4, 44, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(32, 32, 45, 28, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    rc.line(32, 46, 44, 44, opts(s+5, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    // upright body + head on top
+    rc.ellipse(24, 42, 18, 36, co);
+    rc.ellipse(24, 16, 17, 14, opts(s+6, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    rc.polygon([[15,10],[17,2],[22,8]], opts(s+7, PAL.cat, 'solid'));
+    rc.polygon([[26,8],[31,2],[33,10]], opts(s+8, PAL.cat, 'solid'));
+    rc.circle(20, 15, 3, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    rc.circle(28, 15, 3, opts(s+11, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+    // postroj across the chest
+    rc.line(16, 30, 33, 29, opts(s+12, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+    rc.line(17, 36, 32, 35, opts(s+13, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
   } else {
     const step = pose === 'walk1';
     // legs
@@ -237,23 +291,72 @@ function drawCat(rc, g, s, pose){
     rc.circle(58, 21, 3, opts(s+11, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
     rc.line(60, 25, 68, 24, opts(s+12, null, null, {stroke:PAPER, strokeWidth:1, roughness:.8}));
     rc.line(60, 27, 67, 28, opts(s+13, null, null, {stroke:PAPER, strokeWidth:1, roughness:.8}));
-    // postroj — red harness strap
+    // postroj — red harness strap + back piece
     rc.line(44, 20, 46, 36, opts(s+14, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+    rc.line(35, 23, 44, 21, opts(s+15, null, null, {stroke:PAL.leash, strokeWidth:2.2}));
   }
 }
 
 function drawHedgehog(rc, g, s, pose){
   const step = pose === 'walk1' ? 2 : 0;
-  // spiky dome — dense hachure IS the spikes
-  rc.polygon([[8,30],[10,14],[22,5],[36,8],[44,20],[44,30]],
+  // dome (sprite is 60x48; top 8px reserved for the spikes)
+  rc.polygon([[8,38],[10,22],[22,13],[36,16],[44,28],[44,38]],
     opts(s, PAL.hedge, 'hachure', {hachureGap:2.4, fillWeight:2.8, strokeWidth:2}));
+  // spikes poking out of the dome
+  const SPIKES = [
+    [ 9,32,  1,28], [11,26,  3,19], [13,19,  6,10], [19,15, 15, 5],
+    [26,13, 25, 3], [32,15, 35, 5], [38,19, 43,11], [42,25, 50,19]
+  ];
+  SPIKES.forEach((p, i) =>
+    rc.line(p[0], p[1], p[2], p[3], opts(s+10+i, null, null, {strokeWidth:2.2, roughness:1.4})));
   // face
-  rc.polygon([[44,20],[56,27],[44,31]], opts(s+1, PAL.hedgeFace, 'solid', {roughness:1.6}));
-  rc.circle(56, 27, 3.4, opts(s+2, INK, 'solid', {roughness:.8}));
-  rc.circle(47, 23, 2, opts(s+3, INK, 'solid', {roughness:.8}));
+  rc.polygon([[44,28],[56,35],[44,39]], opts(s+1, PAL.hedgeFace, 'solid', {roughness:1.6}));
+  rc.circle(56, 35, 3.4, opts(s+2, INK, 'solid', {roughness:.8}));
+  rc.circle(47, 31, 2, opts(s+3, INK, 'solid', {roughness:.8}));
   // stubby legs
-  rc.line(16 + step, 30, 16 + step, 37, opts(s+4, null, null, {strokeWidth:3}));
-  rc.line(36 - step, 30, 36 - step, 37, opts(s+5, null, null, {strokeWidth:3}));
+  rc.line(16 + step, 38, 16 + step, 45, opts(s+4, null, null, {strokeWidth:3}));
+  rc.line(36 - step, 38, 36 - step, 45, opts(s+5, null, null, {strokeWidth:3}));
+}
+
+function drawFaceInWindow(rc, g, s, kind){
+  // small lit window with the awaited person peeking out
+  rc.rectangle(2, 2, 22, 26, opts(s, PAL.winLit, 'solid', {strokeWidth:1.8, roughness:1.4}));
+  rc.ellipse(13, 18, 13, 16, opts(s+1, PAL.skin, 'solid', {roughness:1.2}));
+  if (kind === 'woman'){
+    rc.arc(13, 15, 16, 15, Math.PI * 0.95, Math.PI * 2.08, true,
+      opts(s+2, PAL.hairW, 'hachure', {hachureGap:2.4, fillWeight:2}));
+  } else {
+    rc.ellipse(13, 10, 13, 7, opts(s+2, PAL.hairM, 'hachure', {hachureGap:2, fillWeight:2}));
+  }
+  rc.line(9, 17, 11, 17, opts(s+3, null, null, {strokeWidth:1.3, roughness:.8}));
+  rc.line(15, 17, 17, 17, opts(s+4, null, null, {strokeWidth:1.3, roughness:.8}));
+}
+
+function drawTram(rc, g, s){
+  // facing left (arrives from the right); anchor = bottom center
+  rc.polygon([[8,70],[8,32],[18,20],[214,20],[222,32],[222,70]],
+    opts(s, '#b0413e', 'hachure', {hachureGap:4, fillWeight:2.2, strokeWidth:2.4}));
+  // cream skirt stripe
+  rc.rectangle(12, 56, 206, 12, opts(s+1, PAL.win, 'solid', {strokeWidth:1.6, roughness:1.5}));
+  // door up front + windows
+  rc.rectangle(22, 32, 22, 34, opts(s+2, PAL.win, 'solid', {strokeWidth:1.8, roughness:1.6}));
+  for (let i = 0; i < 5; i++){
+    rc.rectangle(58 + i * 33, 30, 24, 18,
+      opts(s+3+i, PAL.win, 'solid', {strokeWidth:1.6, roughness:1.6}));
+  }
+  // pantograph
+  rc.line(120, 20, 106, 6, opts(s+8, null, null, {strokeWidth:2.2}));
+  rc.line(106, 6, 138, 9, opts(s+9, null, null, {strokeWidth:2.2}));
+}
+
+function drawWormSprite(rc, g, s){
+  rc.curve([[3,13],[7,6],[12,11],[17,5],[23,10]],
+    opts(s, null, null, {stroke:'#d98a7f', strokeWidth:3.4, roughness:1.6}));
+  rc.circle(23, 10, 2, opts(s+1, '#c9736a', 'solid', {stroke:'#c9736a', roughness:.5}));
+}
+function drawMound(rc, g, s){
+  rc.polygon([[3,10],[8,4],[13,3],[19,5],[23,10]],
+    opts(s, '#a67c52', 'hachure', {hachureGap:2.5, strokeWidth:1.6}));
 }
 
 function drawTree(rc, g, s){
@@ -271,12 +374,20 @@ const SPR = {
   man:   { walk0: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk0')),
            walk1: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk1')),
            pet:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'pet')) },
-  cat:   { walk0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk0')),
-           walk1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk1')),
-           lay:   makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
-  hedge: { walk0: makeSprite(60,40,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
-           walk1: makeSprite(60,40,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
-  tree:  { idle:  makeSprite(60,100,(r,g,s)=>drawTree(r,g,s)) }
+  cat:   { walk0:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk0')),
+           walk1:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'walk1')),
+           stalk0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk0')),
+           stalk1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk1')),
+           climb:  makeSprite(48,72,(r,g,s)=>drawCat(r,g,s,'climb')),
+           lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
+  hedge: { walk0: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
+           walk1: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
+  tree:  { idle:  makeSprite(60,100,(r,g,s)=>drawTree(r,g,s)) },
+  tram:  { idle:  makeSprite(230,80,(r,g,s)=>drawTram(r,g,s)) },
+  face:  { woman: makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'woman')),
+           man:   makeSprite(26,30,(r,g,s)=>drawFaceInWindow(r,g,s,'man')) },
+  worm:  { idle:  makeSprite(26,16,(r,g,s)=>drawWormSprite(r,g,s)) },
+  mound: { idle:  makeSprite(26,12,(r,g,s)=>drawMound(r,g,s)) }
 };
 
 // ===================== WORLD =====================
@@ -303,24 +414,41 @@ const CARS = [
 const BINS = [ {x:460, y:250}, {x:1600, y:300}, {x:1010, y:1160} ];
 const TREES = [ [420,520],[560,430],[700,560],[360,430],[620,620],
                 [180,760],[1750,560],[1850,900],[500,1080],[1180,240],[900,980] ];
+const LAMPS = [ [300,690],[700,690],[1100,690],[1520,690],[1880,690],
+                [500,845],[900,845],[1460,845],[1780,845],
+                [1250,300],[1250,1010],[1420,480],[1420,1200],
+                [450,580],[720,470] ];
 
 BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
 CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
 BINS.forEach(b => block(b.x, b.y, 44, 30));
 TREES.forEach(t => block(t[0] - 8, t[1] - 10, 16, 12));
+LAMPS.forEach(L => block(L[0] - 3, L[1] - 6, 6, 8));
 
+const LITWINS = [];   // centers of lit building windows, for the night glow
 function drawWorld(rc, g, s){
   g.fillStyle = PAPER; g.fillRect(0, 0, WORLD_W, WORLD_H);
 
-  // pink pavement blobs — courtyards
+  // faint pencil speckle so the bare paper ground isn't dead flat
+  for (let gy = 40; gy < WORLD_H; gy += 110){
+    for (let gx = 30; gx < WORLD_W; gx += 130){
+      const j = (gx * 7 + gy * 13) % 97;           // deterministic jitter
+      const x = gx + (j % 41), y = gy + (j % 29);
+      rc.line(x, y, x + 8 + (j % 7), y + 2 - (j % 5),
+        opts(9100 + gx * 3 + gy, null, null, {stroke:'#ddcfae', strokeWidth:1.5, roughness:1.8}));
+    }
+  }
+
+  // pink pavement blobs — courtyards; fixed seeds like the roads, another
+  // big hachure field that flickered too much when boiling
   rc.polygon([[60,40],[760,30],[780,300],[70,320]],
-    opts(s+1, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+    opts(9001, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
   rc.polygon([[1560,60],[1960,70],[1950,420],[1580,400]],
-    opts(s+2, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+    opts(9002, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
   rc.polygon([[60,900],[1000,920],[1010,1380],[70,1390]],
-    opts(s+3, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+    opts(9003, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
   rc.polygon([[1540,1060],[1950,1080],[1940,1400],[1550,1390]],
-    opts(s+4, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
+    opts(9004, PAL.pink, 'hachure', {hachureGap:9, fillWeight:1.4, strokeWidth:1.6}));
 
   // park
   rc.polygon(PARK, opts(s+5, PAL.green, 'zigzag', {hachureGap:8, fillWeight:2, strokeWidth:2}));
@@ -328,28 +456,35 @@ function drawWorld(rc, g, s){
   rc.curve([[320,600],[520,520],[700,480],[860,540]],
     opts(s+6, null, null, {stroke:PAL.pink, strokeWidth:10, roughness:2.6}));
 
-  // roads
+  // roads — fixed seeds (not derived from s) so they stay identical in both
+  // boil variants; a large flickering hachure field was too distracting
   rc.rectangle(0, HROAD.y, WORLD_W, HROAD.h,
-    opts(s+7, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
+    opts(9007, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
   rc.rectangle(VROAD.x, 0, VROAD.w, WORLD_H,
-    opts(s+8, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
+    opts(9008, PAL.road, 'hachure', {hachureGap:11, fillWeight:2.2, strokeWidth:2}));
   // dashed centre lines
   for (let x = 30; x < WORLD_W - 40; x += 90){
     if (x > VROAD.x - 40 && x < VROAD.x + VROAD.w) continue;
     rc.line(x, HROAD.y + 60, x + 42, HROAD.y + 60,
-      opts(s+9+x, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
+      opts(9009+x, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
   }
   for (let y = 30; y < WORLD_H - 40; y += 90){
     if (y > HROAD.y - 40 && y < HROAD.y + HROAD.h) continue;
     rc.line(VROAD.x + 55, y, VROAD.x + 55, y + 42,
-      opts(s+11+y, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
+      opts(9011+y, null, null, {stroke:'#f7f2e2', strokeWidth:4, roughness:2.4}));
   }
+  // tram rails along the lower lane + stop sign at the terminus
+  rc.line(0, 744, WORLD_W, 744, opts(9030, null, null, {stroke:'#8f97a6', strokeWidth:2, roughness:1.2}));
+  rc.line(0, 776, WORLD_W, 776, opts(9031, null, null, {stroke:'#8f97a6', strokeWidth:2, roughness:1.2}));
+  rc.line(1846, 700, 1846, 664, opts(9032, null, null, {strokeWidth:3}));
+  rc.rectangle(1838, 650, 16, 14, opts(9033, PAL.winLit, 'solid', {strokeWidth:1.6, roughness:1.4}));
+
   // crosswalks (zebra)
   for (let i = 0; i < 6; i++){
     rc.rectangle(1090 + i*2, HROAD.y + 8 + i*18, 60, 12,
-      opts(s+13+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
+      opts(9013+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
     rc.rectangle(VROAD.x + 6 + i*17, 560 + (i%2)*3, 12, 56,
-      opts(s+20+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
+      opts(9020+i, '#f7f2e2', 'solid', {strokeWidth:1.4, roughness:1.8}));
   }
 
   // buildings — paneláky with misaligned windows
@@ -364,6 +499,7 @@ function drawWorld(rc, g, s){
         const wx = b.x + 18 + c * (b.w - 30) / cols + jx;
         const wy = b.y + 14 + r * (b.h - 24) / rows + jy;
         const lit = (bi*13 + r*5 + c*7) % 9 === 0;
+        if (lit && worldLayers.length === 0) LITWINS.push([wx + 10, wy + 12]);
         rc.rectangle(wx, wy, 20, 24,
           opts(s+40 + bi*100 + r*10 + c, lit ? PAL.winLit : PAL.win, 'solid',
             {strokeWidth:1.6, roughness:1.7}));
@@ -397,6 +533,12 @@ function drawWorld(rc, g, s){
     rc.rectangle(p[0], p[1], 60, 10, opts(s+100+i, PAL.hairM, 'hachure', {hachureGap:3, strokeWidth:2}));
     rc.line(p[0]+6, p[1]+10, p[0]+6, p[1]+22, opts(s+105+i, null, null, {strokeWidth:2.6}));
     rc.line(p[0]+54, p[1]+10, p[0]+54, p[1]+22, opts(s+106+i, null, null, {strokeWidth:2.6}));
+  });
+
+  // street lamps (lit dynamically at night in drawNight)
+  LAMPS.forEach((L, i) => {
+    rc.line(L[0], L[1], L[0], L[1] - 46, opts(s+120+i, null, null, {strokeWidth:3}));
+    rc.circle(L[0], L[1] - 48, 11, opts(s+140+i, PAL.win, 'solid', {strokeWidth:1.8, roughness:1.2}));
   });
 }
 
@@ -440,17 +582,56 @@ const HEDGE_ALT = [
   "Pozdravuj doma.",
   "Už jsem ti to vyprávěl? Asi jo."
 ];
+// hedgehog reward lines for a delivered worm — genuinely useful info
+const WORM_INFO_SOON =
+  "Žížala! Ty jsi poklad. Za odměnu ti povím: koleje už drnčí — tramvaj přijede zprava po hlavní silnici.";
+const WORM_INFO_WINDOW =
+  "Žížala! Ty jsi poklad. Jen tak mezi námi: někdo tě občas vyhlíží z okna domu vpravo nahoře.";
+const WORM_INFO_ARRIVED =
+  "Žížala! Díky moc. A víš, že u domu vpravo nahoře už někdo čeká? Zrovna vystoupil z tramvaje.";
+
+// sheepish apologies after eating the worm himself
+const EAT_LINES = [
+  "Mlask. … Promiň.",
+  "Já… neudržel jsem se. Promiň.",
+  "Byla moc dobrá. Teda… promiň.",
+  "To se nemělo stát. Ale stálo to za to."
+];
+
 const CAT_LINES = [
   "Ten ježek toho namluví.",
   "Hm.",
   "Tak jdeme dál.",
   "Zajímavé. Asi.",
-  "Mrrr."
+  "Mrrr.",
+  "Ježci. Samá filozofie, žádné myši.",
+  "Tohle už jsem někde slyšel.",
+  "Hluboké. Skoro jako miska.",
+  "Mňau. Teda… souhlasím.",
+  "Kdyby radši mlčel, mohli jsme čmuchat.",
+  "Já bych to neřešil."
 ];
 
 // ===================== ENTITIES =====================
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist  = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function inPoly(px, py, poly){
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++){
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+      inside = !inside;
+  }
+  return inside;
+}
+function randomParkPoint(){
+  for (let k = 0; k < 30; k++){
+    const x = 240 + Math.random() * 630, y = 310 + Math.random() * 340;
+    if (inPoly(x, y, PARK)) return { x, y };
+  }
+  return { x: 520, y: 500 };
+}
 
 let chosen = null;        // 'woman' | 'man'
 let gameState = 'start';  // start | play | ending | done
@@ -458,10 +639,24 @@ let camX = 0, camY = 0, camInit = false;
 
 const player = { x: 260, y: 1080, r: 12, kind: null, pose: 'walk0', flip: false,
                  animT: 0, moving: false };
-const dest   = { x: 1790, y: 340, r: 12, kind: null, pose: 'walk0', flip: true };
+// the other person arrives later by tram: away -> walking -> waiting
+const dest   = { x: 1790, y: 340, r: 12, kind: null, pose: 'walk0', flip: true,
+                 state: 'away', animT: 0 };
+const tram   = { x: WORLD_W + 160, y: 756, state: 'away', t: 0, vx: 0,
+                 stopX: 1790, arriveAt: 120 + Math.random() * 180 };  // 2-5 min
+// how the other person shows up this game: by tram, or coming down from
+// a flat in the north-east panelák (peeking out of a window until then)
+let arrivalMode = Math.random() < 0.5 ? 'tram' : 'window';
+const PEEK = { x: 1812, y: 166 };            // their window (building at 1650,100)
+const peek = { visible: false, t: 8, dur: 0 };
 const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  state: 'wander', orbitA: Math.random() * 6.28, orbitR: 90,
-                 sniffT: 0, target: null, stateT: 0, script: null };
+                 sniffT: 0, target: null, stateT: 0, script: null,
+                 treeSpot: null, treeCooldown: 6, zOff: 0,
+                 wormTarget: null, carriedWorm: null, wormEatAt: null };
+let playT = 0;
+const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
+let wormTimer = 15;
 const hedgehogs = [];
 const HEDGE_SPAWNS = [
   [980, 640], [1210, 560], [560, 760],  [760, 880],
@@ -549,6 +744,66 @@ function update(dt){
   }
   collide(player);
 
+  // ---- arrival of the other person (tram or window mode) ----
+  playT += dt;
+  if (arrivalMode === 'window' && dest.state === 'away'){
+    if (playT >= tram.arriveAt){
+      peek.visible = false;
+      dest.state = 'walking'; dest.x = 1780; dest.y = 274;   // steps out of the door
+    } else if (peek.visible){
+      peek.dur -= dt;
+      if (peek.dur <= 0){ peek.visible = false; peek.t = 15 + Math.random() * 20; }
+    } else {
+      peek.t -= dt;
+      if (peek.t <= 0){ peek.visible = true; peek.dur = 3.5 + Math.random() * 2; }
+    }
+  }
+  if (arrivalMode === 'tram' && tram.state === 'away' && playT >= tram.arriveAt)
+    tram.state = 'arriving';
+  if (tram.state === 'arriving'){
+    tram.x -= clamp((tram.x - tram.stopX) * 1.4, 40, 340) * dt;   // ease into the stop
+    if (tram.x <= tram.stopX + 1){ tram.x = tram.stopX; tram.state = 'doors'; tram.t = 0; }
+  } else if (tram.state === 'doors'){
+    tram.t += dt;
+    if (tram.t > 2.4){
+      tram.state = 'leaving'; tram.vx = 30;
+      dest.state = 'walking'; dest.x = tram.stopX; dest.y = 726;
+    }
+  } else if (tram.state === 'leaving'){
+    tram.vx = Math.min(340, tram.vx + 170 * dt);
+    tram.x -= tram.vx * dt;
+    if (tram.x < -220) tram.state = 'gone';
+  }
+  if (dest.state === 'walking'){
+    const tx = 1790, ty = 340;
+    const d = Math.hypot(tx - dest.x, ty - dest.y);
+    if (d < 4){
+      dest.x = tx; dest.y = ty; dest.state = 'waiting'; dest.pose = 'walk0';
+      say(dest, 'Tady jsem!', 3);
+    } else {
+      dest.x += (tx - dest.x) / d * 90 * dt;
+      dest.y += (ty - dest.y) / d * 90 * dt;
+      if (Math.abs(tx - dest.x) > 2) dest.flip = tx < dest.x;
+      dest.animT += dt;
+      dest.pose = (Math.floor(dest.animT / 0.24) % 2) ? 'walk1' : 'walk0';
+    }
+  }
+
+  // ---- worms (park only) ----
+  wormTimer -= dt;
+  if (wormTimer <= 0){
+    if (worms.filter(w => w.state === 'emerging' || w.state === 'out').length < 2){
+      const p = randomParkPoint();
+      worms.push({ x: p.x, y: p.y, state: 'emerging', t: 0 });
+    }
+    wormTimer = 18 + Math.random() * 20;
+  }
+  for (const w of worms){
+    w.t += dt;
+    if (w.state === 'emerging' && w.t > 0.9){ w.state = 'out'; w.t = 0; }
+    else if (w.state === 'out' && w.t > 30) w.state = 'gone';
+  }
+
   // ---- cat FSM ----
   catTalkCooldown -= dt;
   cat.stateT += dt;
@@ -572,25 +827,72 @@ function update(dt){
     if (catTalkCooldown <= 0){
       for (const h of hedgehogs){
         if (h.cooldown <= 0 && dist(cat, h) < 95){
-          cat.state = 'approach'; cat.target = h; cat.stateT = 0; break;
+          cat.state = 'approach'; cat.target = h; cat.stateT = 0;
+          say(cat, '!', 1.1);
+          break;
         }
       }
     }
+    // the carried worm proves too tasty
+    if (cat.state === 'wander' && cat.carriedWorm && cat.wormEatAt && playT >= cat.wormEatAt){
+      cat.state = 'eatWorm'; cat.stateT = 0;
+    }
+    // spot a worm to play with (unless already carrying one)
+    if (cat.state === 'wander' && !cat.carriedWorm){
+      for (const w of worms){
+        if (w.state === 'out' && dist(cat, w) < 110 &&
+            Math.hypot(player.x - w.x, player.y - w.y) < LEASH_LEN - 10){
+          cat.state = 'toWorm'; cat.wormTarget = w; cat.stateT = 0;
+          say(cat, '!', 1);
+          break;
+        }
+      }
+    }
+    // sudden urge to climb a nearby tree (must be within leash reach)
+    cat.treeCooldown -= dt;
+    if (cat.state === 'wander' && cat.treeCooldown <= 0){
+      for (const t of TREES){
+        if (Math.hypot(cat.x - t[0], cat.y - t[1]) < 150 &&
+            Math.hypot(player.x - t[0], player.y - t[1]) < LEASH_LEN - 10){
+          cat.state = 'dashTree'; cat.treeSpot = { x: t[0], y: t[1] + 4 };
+          cat.stateT = 0;
+          break;
+        }
+      }
+      if (cat.state === 'wander') cat.treeCooldown = 3;  // no tree around, re-check soon
+    }
   }
   else if (cat.state === 'approach'){
+    // stalk the hedgehog — it keeps wandering, the cat follows it
     catTarget = cat.target; catSpeed = 130;
-    cat.target.paused = true;
     if (dist(cat, cat.target) < 30){
       cat.state = 'lay'; cat.stateT = 0; cat.pose = 'lay';
+      catTarget = null; catSpeed = 0;   // stop this tick or the walk pose overwrites 'lay'
       const h = cat.target;
-      cat.script = [
-        { at: 0.8, fn(){ say(h, h.talked ? HEDGE_ALT[Math.floor(Math.random()*HEDGE_ALT.length)] : h.line); } },
-        { at: 4.6, fn(){ say(cat, CAT_LINES[Math.floor(Math.random()*CAT_LINES.length)]); } },
-        { at: 7.0, fn(){
-            h.talked = true; h.cooldown = 30; h.paused = false;
-            cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
-        } }
-      ];
+      h.paused = true;
+      if (cat.carriedWorm){
+        // deliver the worm — the hedgehog is grateful and shares real info
+        cat.script = [
+          { at: 0.8, fn(){ say(h, dest.state !== 'away' ? WORM_INFO_ARRIVED
+              : arrivalMode === 'tram' ? WORM_INFO_SOON : WORM_INFO_WINDOW, 7); } },
+          { at: 6.2, fn(){ say(cat, 'Stejně se kroutila moc.', 2.2); } },
+          { at: 8.6, fn(){
+              if (cat.carriedWorm) cat.carriedWorm.state = 'gone';
+              cat.carriedWorm = null;
+              h.talked = true; h.cooldown = 30; h.paused = false;
+              cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
+          } }
+        ];
+      } else {
+        cat.script = [
+          { at: 0.8, fn(){ say(h, h.talked ? HEDGE_ALT[Math.floor(Math.random()*HEDGE_ALT.length)] : h.line); } },
+          { at: 4.6, fn(){ say(cat, CAT_LINES[Math.floor(Math.random()*CAT_LINES.length)]); } },
+          { at: 7.0, fn(){
+              h.talked = true; h.cooldown = 30; h.paused = false;
+              cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
+          } }
+        ];
+      }
     } else if (cat.stateT > 4){ // gave up (leash too short etc.)
       cat.target.paused = false;
       cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 4;
@@ -604,11 +906,69 @@ function update(dt){
       }
     }
   }
+  else if (cat.state === 'eatWorm'){
+    catSpeed = 0;
+    cat.pose = (Math.floor(cat.stateT / 0.2) % 2) ? 'stalk1' : 'stalk0';
+    if (cat.stateT > 1.4){
+      if (cat.carriedWorm) cat.carriedWorm.state = 'gone';
+      cat.carriedWorm = null; cat.wormEatAt = null;
+      cat.state = 'wander'; cat.stateT = 0;
+      say(cat, EAT_LINES[Math.floor(Math.random() * EAT_LINES.length)], 2.6);
+    }
+  }
+  else if (cat.state === 'toWorm'){
+    const w = cat.wormTarget;
+    if (!w || w.state !== 'out'){ cat.state = 'wander'; cat.stateT = 0; }
+    else {
+      catTarget = w; catSpeed = 200;
+      if (dist(cat, w) < 18){ cat.state = 'playWorm'; cat.stateT = 0; }
+      else if (cat.stateT > 4){ cat.state = 'wander'; cat.stateT = 0; }
+    }
+  }
+  else if (cat.state === 'playWorm'){
+    catSpeed = 0;
+    const w = cat.wormTarget;
+    if (!w || w.state !== 'out' || dist(cat, w) > 34){   // expired or dragged away
+      cat.state = 'wander'; cat.stateT = 0; cat.wormTarget = null;
+    } else {
+      // bat it around a bit before taking it
+      w.x += Math.sin(cat.stateT * 9) * 30 * dt;
+      w.y += Math.cos(cat.stateT * 7) * 20 * dt;
+      cat.flip = w.x < cat.x;
+      cat.pose = (Math.floor(cat.stateT / 0.18) % 2) ? 'stalk1' : 'stalk0';
+      if (cat.stateT > 3.2){
+        w.state = 'carried'; cat.carriedWorm = w; cat.wormTarget = null;
+        cat.state = 'wander'; cat.stateT = 0;
+        // sometimes the temptation wins before he finds a hedgehog
+        cat.wormEatAt = Math.random() < 0.35 ? playT + 4 + Math.random() * 6 : null;
+        say(cat, 'Mám ji.', 1.4);
+      }
+    }
+  }
+  else if (cat.state === 'dashTree'){
+    catTarget = cat.treeSpot; catSpeed = 240;
+    if (dist(cat, cat.treeSpot) < 30){
+      cat.state = 'inTree'; cat.stateT = 0; cat.pose = 'climb';
+      catTarget = null; catSpeed = 0;
+    } else if (cat.stateT > 3){          // leash too short after all
+      cat.state = 'wander'; cat.stateT = 0; cat.treeCooldown = 10;
+    }
+  }
+  else if (cat.state === 'inTree'){
+    catSpeed = 0;
+    // dragged off by the leash, or done lounging
+    if (cat.stateT > 3 || dist(cat, cat.treeSpot) > 40){
+      cat.state = 'wander'; cat.stateT = 0;
+      cat.treeCooldown = 14 + Math.random() * 12;
+      say(cat, 'Hop.', 1);
+    }
+  }
   else if (cat.state === 'toDest'){
     catTarget = { x: dest.x + (dest.kind === 'man' ? 34 : -30), y: dest.y + 6 };
     catSpeed = 120;
     if (dist(cat, catTarget) < 14){
       cat.state = 'petted'; cat.pose = 'lay'; cat.stateT = 0;
+      catTarget = null; catSpeed = 0;
       dest.pose = 'pet';
       say(cat, 'Prrrr.', 3);
       setTimeout(showEnd, 2200);
@@ -623,11 +983,16 @@ function update(dt){
       cat.y += vy * catSpeed * dt;
       cat.flip = vx < 0;
       cat.animT += dt;
-      cat.pose = (Math.floor(cat.animT / 0.22) % 2) ? 'walk1' : 'walk0';
+      const gait = cat.state === 'approach' ? 'stalk' : 'walk';
+      cat.pose = gait + ((Math.floor(cat.animT / 0.22) % 2) ? '1' : '0');
     } else if (cat.state === 'wander'){
       cat.pose = 'walk0';
     }
   }
+  // jump up into / down from the canopy (drawn height above the ground spot)
+  const zTarget = cat.state === 'inTree' ? 58 : 0;
+  cat.zOff += clamp(zTarget - cat.zOff, -260 * dt, 260 * dt);
+
   // leash constraint (not during ending — leash unclipped)
   if (gameState === 'play'){
     const d = dist(cat, player);
@@ -664,8 +1029,9 @@ function update(dt){
   bubbles = bubbles.filter(b => (b.t += dt) < b.dur);
 
   // ---- reach destination ----
-  if (gameState === 'play' && dist(player, dest) < 95 &&
-      (cat.state === 'wander' || cat.state === 'approach')){
+  if (gameState === 'play' && dest.state === 'waiting' && dist(player, dest) < 95 &&
+      (cat.state === 'wander' || cat.state === 'approach' ||
+       cat.state === 'dashTree' || cat.state === 'toWorm')){
     gameState = 'ending';
     if (cat.target) cat.target.paused = false;
     cat.state = 'toDest'; cat.stateT = 0;
@@ -684,7 +1050,7 @@ function showEnd(){
   gameState = 'done';
   const who = chosen === 'woman' ? 'On' : 'Ona';
   document.getElementById('endText').innerHTML =
-    who + ' se skloní a drbe kočku za ušima. Kočka přede.<br><br>' +
+    who + ' se skloní a drbe kocoura za ušima. Kocour přede.<br><br>' +
     'Došli jste. Ale nejhezčí byla stejně ta cesta —<br>i s těmi ježky.';
   document.getElementById('endScreen').classList.remove('hidden');
 }
@@ -701,11 +1067,17 @@ function drawSprite(spr, variant, ent, anchorH){
 }
 
 function shadow(ent, rw, rh){
+  // low western sun: shadows stretch east and lengthen toward dusk,
+  // then fade away once darkness takes over
+  const dayT = dayPhase();
+  const len = 1.2 + dayT * 2.2;
+  const a = 0.12 * clamp(1 - (dayT - 0.55) / 0.3, 0, 1);
+  if (a <= 0.004) return;
   ctx.save();
-  ctx.globalAlpha = 0.12;
+  ctx.globalAlpha = a;
   ctx.fillStyle = INK;
   ctx.beginPath();
-  ctx.ellipse(ent.x - camX, ent.y - camY + 2, rw, rh, 0, 0, Math.PI * 2);
+  ctx.ellipse(ent.x - camX + rw * len * 0.7, ent.y - camY + 2, rw * len, rh, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -718,7 +1090,7 @@ function drawLeash(variant){
   if (gameState !== 'play') return;
   const hx = player.x - camX + (player.flip ? -10 : 10);
   const hy = player.y - camY - 44;
-  const cx2 = cat.x - camX, cy2 = cat.y - camY - 14;
+  const cx2 = cat.x - camX, cy2 = cat.y - camY - 14 - cat.zOff;
   const d = Math.hypot(cx2 - hx, cy2 - hy);
   const slack = Math.max(0, LEASH_LEN - d);
   const sag = Math.min(42, slack * 0.4);
@@ -736,7 +1108,7 @@ function drawLeash(variant){
 function wrapText(text, maxW){
   const words = text.split(' ');
   const lines = []; let line = '';
-  ctx.font = '15px "Segoe Print","Bradley Hand","Comic Sans MS",cursive';
+  ctx.font = '15px "Pangolin","Bradley Hand","Segoe Print","Comic Sans MS",cursive';
   for (const w of words){
     const t = line ? line + ' ' + w : w;
     if (ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; }
@@ -749,7 +1121,7 @@ function wrapText(text, maxW){
 function drawBubbles(variant){
   for (const b of bubbles){
     const e = b.ent;
-    const top = (e === cat || hedgehogs.includes(e)) ? 42 : 116;
+    const top = e === cat ? 42 + cat.zOff : hedgehogs.includes(e) ? 42 : 116;
     const lines = wrapText(b.text, 190);
     const lw = Math.max(...lines.map(l => ctx.measureText(l).width));
     const bw = lw + 24, bh = lines.length * 19 + 16;
@@ -782,15 +1154,79 @@ function drawBubbles(variant){
     ctx.strokeStyle = INK; ctx.stroke();
     // text
     ctx.fillStyle = INK;
-    ctx.font = '15px "Segoe Print","Bradley Hand","Comic Sans MS",cursive';
+    ctx.font = '15px "Pangolin","Bradley Hand","Segoe Print","Comic Sans MS",cursive';
     lines.forEach((l, i) => ctx.fillText(l, bx + 12, by + 22 + i * 19));
     ctx.restore();
   }
 }
 
+// ---------- day-night cycle ----------
+// starts shortly before sunset, ends in near-darkness with lamps lit
+const night = document.createElement('canvas');
+function dayPhase(){ return clamp((40 + playT) / 340, 0, 1); }
+function lampLit(i, dayT){
+  const th = 0.5 + ((i * 37) % 10) * 0.02;               // staggered switch-on
+  if (dayT < th) return false;
+  if (dayT < th + 0.02) return Math.floor(playT * 14) % 2 === 0;  // flicker
+  return true;
+}
+function punchGlow(ng, sx, sy, r, strength){
+  if (sx < -r || sx > VW + r || sy < -r || sy > VH + r) return;
+  const grad = ng.createRadialGradient(sx, sy, r * 0.08, sx, sy, r);
+  grad.addColorStop(0, `rgba(0,0,0,${strength})`);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ng.fillStyle = grad;
+  ng.beginPath(); ng.arc(sx, sy, r, 0, Math.PI * 2); ng.fill();
+}
+function drawNight(){
+  const dayT = dayPhase();
+  // warm sunset tint, strongest mid-dusk
+  const warm = Math.sin(dayT * Math.PI) * 0.16;
+  if (warm > 0.01){
+    ctx.save();
+    ctx.globalAlpha = warm;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = '#e8974f';
+    ctx.fillRect(0, 0, VW, VH);
+    ctx.restore();
+  }
+  const darkA = Math.pow(dayT, 1.6) * 0.62;
+  if (darkA < 0.02) return;
+  if (night.width !== VW || night.height !== VH){ night.width = VW; night.height = VH; }
+  const ng = night.getContext('2d');
+  ng.globalCompositeOperation = 'source-over';
+  ng.clearRect(0, 0, VW, VH);
+  ng.fillStyle = `rgba(24,26,58,${darkA})`;
+  ng.fillRect(0, 0, VW, VH);
+  // punch out light pools before compositing the darkness
+  ng.globalCompositeOperation = 'destination-out';
+  LAMPS.forEach((L, i) => {
+    if (lampLit(i, dayT)) punchGlow(ng, L[0] - camX, L[1] - 46 - camY, 120, 0.9);
+  });
+  LITWINS.forEach(w => punchGlow(ng, w[0] - camX, w[1] - camY, 34, 0.5));
+  ctx.drawImage(night, 0, 0);
+  // bright lamp heads on top of the darkness
+  LAMPS.forEach((L, i) => {
+    if (!lampLit(i, dayT)) return;
+    const sx = L[0] - camX, sy = L[1] - 48 - camY;
+    if (sx < -20 || sx > VW + 20 || sy < -20 || sy > VH + 20) return;
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#ffd98a';
+    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  });
+}
+
 function drawHudArrow(variant){
   if (gameState !== 'play') return;
-  const sx = dest.x - camX, sy = dest.y - camY - 60;
+  // before the other person arrives, the arrow tracks the incoming tram
+  let tx, ty;
+  if (dest.state !== 'away'){ tx = dest.x; ty = dest.y - 60; }
+  else if (tram.state === 'arriving' || tram.state === 'doors'){ tx = tram.x; ty = tram.y; }
+  else if (arrivalMode === 'window' && peek.visible){ tx = PEEK.x; ty = PEEK.y - 15; }
+  else return;
+  const sx = tx - camX, sy = ty - camY;
   if (sx > 30 && sx < VW - 30 && sy > 30 && sy < VH - 30) return; // visible
   const cx2 = VW / 2, cy2 = VH / 2;
   const a = Math.atan2(sy - cy2, sx - cx2);
@@ -832,7 +1268,10 @@ function render(now){
     camX, camY, VW, VH, 0, 0, VW, VH);
 
   // shadows
-  shadow(player, 16, 5); shadow(dest, 16, 5); shadow(cat, 18, 5);
+  shadow(player, 16, 5); shadow(cat, 18, 5);
+  if (dest.state !== 'away') shadow(dest, 16, 5);
+  if (tram.state === 'arriving' || tram.state === 'doors' || tram.state === 'leaving')
+    shadow({ x: tram.x, y: tram.y + 34 }, 95, 8);
   hedgehogs.forEach(h => shadow(h, 14, 4));
   TREES.forEach(t => {
     const e = { x: t[0], y: t[1] };
@@ -844,13 +1283,37 @@ function render(now){
   // y-sorted entities
   const ents = [];
   ents.push({ y: player.y, draw: () => drawSprite(SPR[player.kind][player.pose], variant, player) });
-  ents.push({ y: dest.y,   draw: () => drawSprite(SPR[dest.kind][dest.pose], variant, dest) });
-  ents.push({ y: cat.y,    draw: () => drawSprite(SPR.cat[cat.pose], variant, cat) });
+  if (dest.state !== 'away')
+    ents.push({ y: dest.y, draw: () => drawSprite(SPR[dest.kind][dest.pose], variant, dest) });
+  if (tram.state === 'arriving' || tram.state === 'doors' || tram.state === 'leaving')
+    ents.push({ y: tram.y + 38, draw: () => drawSprite(SPR.tram.idle, variant,
+      { x: tram.x, y: tram.y + 38, flip: false }) });
+  worms.forEach(w => {
+    if (w.state !== 'emerging' && w.state !== 'out') return;
+    ents.push({ y: w.y, draw: () => {
+      drawSprite(SPR.mound.idle, variant, { x: w.x, y: w.y + 2, flip: false });
+      if (w.state === 'out')
+        drawSprite(SPR.worm.idle, variant, { x: w.x, y: w.y - 2, flip: false });
+    } });
+  });
+  // while in a tree, sort just below the tree's anchor so he draws over its canopy
+  ents.push({ y: (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.y + 12 : cat.y,
+              draw: () => {
+    drawSprite(SPR.cat[cat.pose], variant, { x: cat.x, y: cat.y - cat.zOff, flip: cat.flip });
+    if (cat.carriedWorm)
+      drawSprite(SPR.worm.idle, variant,
+        { x: cat.x + (cat.flip ? -26 : 26), y: cat.y - 10 - cat.zOff, flip: cat.flip });
+  } });
   hedgehogs.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hedge[h.pose], variant, h) }));
   TREES.forEach(t => ents.push({ y: t[1], draw: () => drawSprite(SPR.tree.idle, variant, { x: t[0], y: t[1], flip: false }) }));
   ents.sort((a, b) => a.y - b.y);
   ents.forEach(e => e.draw());
 
+  // the awaited person peeking from their window (window arrival mode)
+  if (arrivalMode === 'window' && peek.visible && dest.kind)
+    drawSprite(SPR.face[dest.kind], variant, { x: PEEK.x, y: PEEK.y, flip: false });
+
+  drawNight();
   drawBubbles(variant);
   drawHudArrow(variant);
   drawJoystick();

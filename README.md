@@ -10,7 +10,8 @@ swapped in later).
 
 ## Run
 
-It's a single `index.html` — open it in a browser, or serve it:
+Open `index.html` in a browser (Rough.js is bundled locally in
+`rough.min.js`, no internet needed), or serve it:
 
 ```
 python3 -m http.server 8000
@@ -21,5 +22,8 @@ Works on desktop (WASD / arrows) and mobile (floating touch joystick).
 ## Status
 
 Playable placeholder prototype: character select, leash physics, cat AI
-(wander / sniff / hedgehog encounters), 8 hedgehogs with Czech dialogue,
-ending sequence with petting.
+(wander / sniff / hedgehog encounters / tree climbing / worm play),
+8 hedgehogs with Czech dialogue, park earthworms the cat can gift to
+hedgehogs for hints, the other person arriving by tram or coming down
+from a panelák window (2–5 min timer), a sunset-to-night cycle with
+street lamps, ending sequence with petting.
