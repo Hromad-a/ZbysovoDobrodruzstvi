@@ -20,12 +20,12 @@
     color:var(--ink); touch-action:none; -webkit-user-select:none; user-select:none;}
   canvas#game{display:block;width:100vw;height:100vh}
   .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:18px;background:var(--paper);z-index:10;padding:20px;text-align:center}
+    justify-content:center;gap:clamp(8px,2.5vh,18px);background:var(--paper);z-index:10;padding:16px;text-align:center}
   .overlay.hidden{display:none}
-  h1{font-size:clamp(28px,6vw,52px);margin:0;transform:rotate(-2deg);letter-spacing:1px}
-  .sub{font-size:clamp(14px,3vw,19px);max-width:520px;line-height:1.5;transform:rotate(.5deg)}
-  .chars{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
-  button.char{background:#fdf6e6;border:2.5px solid var(--ink);cursor:pointer;padding:16px 22px 12px;
+  h1{font-size:clamp(26px,6vw,52px);margin:0;transform:rotate(-2deg);letter-spacing:1px}
+  .sub{font-size:clamp(13px,3vw,19px);max-width:520px;line-height:1.4;transform:rotate(.5deg)}
+  .chars{display:flex;gap:clamp(14px,4vw,28px);flex-wrap:nowrap;justify-content:center}
+  button.char{background:#fdf6e6;border:2.5px solid var(--ink);cursor:pointer;padding:clamp(8px,2vw,16px) clamp(12px,3vw,22px) clamp(6px,1.5vw,12px);
     border-radius:20px 7px 24px 9px/9px 22px 7px 20px;
     font-family:inherit;color:var(--ink);font-size:17px;transition:transform .15s, box-shadow .15s;
     box-shadow:5px 6px 0 rgba(58,64,102,.18), inset 0 0 0 1.5px rgba(58,64,102,.25)}
@@ -34,9 +34,14 @@
   button.char:hover,button.char:focus-visible{transform:rotate(0) scale(1.06);
     outline:2.5px dashed var(--ink);outline-offset:5px;
     box-shadow:7px 9px 0 rgba(58,64,102,.22), inset 0 0 0 1.5px rgba(58,64,102,.35)}
-  button.char canvas{display:block;margin:0 auto 4px}
-  button.char .lbl{display:block;margin-top:2px;font-size:21px;letter-spacing:1px;transform:rotate(-1deg)}
-  .hint{font-size:13px;opacity:.75;margin-top:8px}
+  button.char canvas{display:block;margin:0 auto 4px;width:clamp(66px,22vw,116px);height:auto}
+  button.char .lbl{display:block;margin-top:2px;font-size:clamp(16px,4vw,21px);letter-spacing:1px;transform:rotate(-1deg)}
+  .hint{font-size:clamp(11px,2.6vw,13px);opacity:.75;margin-top:6px}
+  @media (max-height:520px){
+    button.char canvas{width:clamp(48px,14vh,90px)}
+    h1{font-size:clamp(22px,5vh,40px)}
+    .sub{font-size:clamp(11px,2.6vh,16px)}
+  }
   #startScreen{background:transparent}
   #endScreen{background:rgba(244,234,210,.94)}
   #endScreen p{font-size:clamp(16px,3.5vw,22px);max-width:480px;line-height:1.6}
@@ -97,6 +102,8 @@
     "poop": "Tak. Teď je to moje.",
     "dragged": "No dobře, už jdu.",
     "purr": "Prrrr.",
+    "squirm": "Mrr! Dost mazlení.",
+    "down": "Radši po svých.",
     "lines": [
       "Ten ježek toho namluví.",
       "Hm.",
@@ -280,6 +287,9 @@ function drawWoman(rc, g, s, pose){
     rc.line(25, 104, 27, 111, opts(s+13, null, null, {strokeWidth:3})); // L shin dangles
     rc.line(36, 98, 39, 104, opts(s+2, null, null, {strokeWidth:3}));   // R thigh
     rc.line(39, 104, 37, 111, opts(s+14, null, null, {strokeWidth:3})); // R shin dangles
+  } else if (pose === 'hold'){
+    rc.line(29, 96, 27, 118, opts(s+1, null, null, {strokeWidth:3}));    // standing
+    rc.line(35, 96, 37, 118, opts(s+2, null, null, {strokeWidth:3}));
   } else {
     rc.line(26, 112, 44, 116, opts(s+1, null, null, {strokeWidth:3})); // folded legs
   }
@@ -289,6 +299,9 @@ function drawWoman(rc, g, s, pose){
   // arms
   if (kneel){
     rc.line(26, 60+oy, 4, 92, opts(s+4, null, null, {strokeWidth:3}));   // petting arm
+  } else if (pose === 'hold'){
+    rc.line(26, 60, 31, 74, opts(s+4, null, null, {strokeWidth:3}));     // arms cradle the cat
+    rc.line(38, 60, 33, 74, opts(s+5, null, null, {strokeWidth:3}));
   } else {
     rc.line(26, 58, 18, 84, opts(s+4, null, null, {strokeWidth:3}));
     rc.line(38, 58, 47, 82, opts(s+5, null, null, {strokeWidth:3}));
@@ -326,6 +339,9 @@ function drawMan(rc, g, s, pose){
     rc.line(25, 103, 27, 110, opts(s+13, null, null, {strokeWidth:4})); // L shin dangles
     rc.line(37, 96, 40, 103, opts(s+2, null, null, {strokeWidth:4}));   // R thigh
     rc.line(40, 103, 38, 110, opts(s+14, null, null, {strokeWidth:4})); // R shin dangles
+  } else if (pose === 'hold'){
+    rc.line(29, 94, 27, 118, opts(s+1, null, null, {strokeWidth:4}));    // standing
+    rc.line(35, 94, 37, 118, opts(s+2, null, null, {strokeWidth:4}));
   } else {
     rc.line(24, 112, 44, 115, opts(s+1, null, null, {strokeWidth:4}));
   }
@@ -335,6 +351,9 @@ function drawMan(rc, g, s, pose){
   // arms
   if (kneel){
     rc.line(40, 58+oy, 60, 92, opts(s+4, null, null, {strokeWidth:3.4}));
+  } else if (pose === 'hold'){
+    rc.line(24, 58, 30, 74, opts(s+4, null, null, {strokeWidth:3.4}));   // arms cradle the cat
+    rc.line(40, 58, 34, 74, opts(s+5, null, null, {strokeWidth:3.4}));
   } else if (pose === 'phone'){
     // one arm raised, holding the phone out to the side
     rc.line(24, 56, 16, 84, opts(s+4, null, null, {strokeWidth:3.4}));   // other arm relaxed down
@@ -758,12 +777,14 @@ const SPR = {
   woman: { walk0: makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'walk0')),
            walk1: makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'walk1')),
            pet:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'pet')),
-           sit:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'sit')) },
+           sit:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'sit')),
+           hold:  makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'hold')) },
   man:   { walk0: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk0')),
            walk1: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk1')),
            pet:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'pet')),
            phone: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'phone')),
-           sit:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'sit')) },
+           sit:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'sit')),
+           hold:  makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'hold')) },
   ped:   PED_PALS.map(pal => ({
            walk0: makeSprite(64,120,(r,g,s)=>drawPed(r,g,s,'walk0',pal)),
            walk1: makeSprite(64,120,(r,g,s)=>drawPed(r,g,s,'walk1',pal)) })),
@@ -1071,7 +1092,7 @@ let camX = 0, camY = 0, camInit = false;
 
 const player = { x: 260, y: 1080, r: 12, kind: null, pose: 'walk0', flip: false,
                  animT: 0, moving: false, idleT: 0, special: null, specialT: 0, stepBeat: -1,
-                 moveAng: 0, moveStreak: 0, rot: 0, sitTilt: 0, sitLeanT: 0 };
+                 moveAng: 0, moveStreak: 0, rot: 0, sitTilt: 0, sitLeanT: 0, holding: false };
 // the other person arrives later by tram: away -> walking -> waiting
 const dest   = { x: 1790, y: 340, r: 12, kind: null, pose: 'walk0', flip: true,
                  state: 'away', animT: 0,
@@ -1097,7 +1118,8 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  wormTarget: null, carriedWorm: null, wormEatAt: null, dragT: 0,
                  scaredOf: null, hareTarget: null, carSpot: null, watchDur: 0,
                  carSniffCooldown: 15 + Math.random() * 20, bottleCooldown: 22 + Math.random() * 25,
-                 bottleSpot: null, rollCooldown: 18 + Math.random() * 22, reliefCooldown: 40 + Math.random() * 40,
+                 bottleSpot: null, rollCooldown: 18 + Math.random() * 22, holdDur: 0, squirmRot: 0,
+                 reliefCooldown: 40 + Math.random() * 40,
                  reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0 };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
@@ -1167,6 +1189,7 @@ const dirt = [];       // {x,y,vx,vy,t} specks flung while the cat buries them
 let catChatCooldown = 14 + Math.random() * 12;
 let shoutTimer = 30 + Math.random() * 50;   // occasional rowdy street noise
 let commenterTimer = 18 + Math.random() * 22;  // a passerby comes over to comment on the cat
+let holdTimer = 30 + Math.random() * 40;       // the person scoops the cat up for a cuddle
 
 // weather: 0 clear · 1 light rain · 2 rain · 3 storm (may drift over the walk)
 function pickWeather(){ const r = Math.random(); return r < 0.55 ? 0 : r < 0.8 ? 1 : r < 0.93 ? 2 : 3; }
@@ -1373,8 +1396,10 @@ function update(dt){
     // the girl crouches to pet the cat
     player.moveStreak = 0;
     player.idleT += dt;
-    const bench = benchNear(player);
-    if (player.special === 'sit'){
+    const bench = player.holding ? null : benchNear(player);
+    if (player.holding){
+      /* holding the cat — no other idle actions */
+    } else if (player.special === 'sit'){
       if (!bench) player.special = null;               // (shouldn't happen while seated)
       // occasionally shift the lean to the side while sitting
       else if ((player.sitLeanT -= dt) <= 0){
@@ -1396,8 +1421,9 @@ function update(dt){
         player.special = 'pet'; player.specialT = 3 + Math.random() * 2;
       }
     }
-    player.pose = player.special || 'walk0';
+    player.pose = player.holding ? 'hold' : (player.special || 'walk0');
   }
+  if (player.holding) player.pose = 'hold';           // holds the pose even while walking
   // ease the seated side-lean in/out (0 when not sitting)
   const rotTarget = (player.special === 'sit') ? player.sitTilt : 0;
   player.rot += (rotTarget - player.rot) * Math.min(1, dt * 5);
@@ -1711,14 +1737,25 @@ function update(dt){
     commenterTimer = 30 + Math.random() * 45;
   }
 
+  // ---- the person scoops the cat up and holds him a while ----
+  holdTimer -= dt;
+  if (holdTimer <= 0){
+    if (gameState === 'play' && !player.holding && cat.state === 'wander' &&
+        dist(cat, player) < 80 && player.special !== 'sit'){
+      cat.state = 'held'; cat.stateT = 0; cat.holdDur = 5 + Math.random() * 4;
+      cat.squirmRot = 0; cat._squirmed = false; player.holding = true; playMeow();
+    }
+    holdTimer = 35 + Math.random() * 45;
+  }
+
   // ---- cat FSM ----
   catTalkCooldown -= dt;
   cat.stateT += dt;
   let catSpeed = 0, catTarget = null;
 
-  // a nearby dog frightens the cat, interrupting most activities
+  // a nearby dog frightens the cat, interrupting most activities (but not while held/safe)
   if (cat.state !== 'scared' && cat.state !== 'toDest' && cat.state !== 'petted' &&
-      cat.state !== 'inTree' && cat.state !== 'downTree'){
+      cat.state !== 'inTree' && cat.state !== 'downTree' && cat.state !== 'held'){
     const nd = nearestDog();
     if (nd.dog && nd.d < 115){
       if (cat.target) cat.target.paused = false;
@@ -1728,7 +1765,19 @@ function update(dt){
     }
   }
 
-  if (cat.state === 'wander'){
+  if (cat.state === 'held'){
+    catSpeed = 0; catTarget = null;
+    cat.x = player.x; cat.y = player.y;            // pinned; drawn up in the arms
+    cat.pose = 'lay';
+    const squirming = cat.stateT > cat.holdDur - 1.6;
+    cat.squirmRot = squirming ? Math.sin(cat.stateT * 26) * 0.22 : 0;   // škubá se
+    if (squirming && !cat._squirmed){ cat._squirmed = true; say(cat, T.cat.squirm, 1.6); playMumble(); }
+    if (cat.stateT > cat.holdDur){                  // wants down — the person lets him
+      cat.state = 'wander'; cat.stateT = 0; cat.squirmRot = 0;
+      player.holding = false; say(cat, T.cat.down, 1.4);
+    }
+  }
+  else if (cat.state === 'wander'){
     if (player.moving && player.moveStreak > 2){
       // heel: after steady walking the cat trots up in front / beside you
       cat.leadSwitchT -= dt;
@@ -2111,8 +2160,8 @@ function update(dt){
   const zTarget = (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.perch : 0;
   cat.zOff += clamp(zTarget - cat.zOff, -260 * dt, 260 * dt);
 
-  // leash constraint (not during ending — leash unclipped)
-  if (gameState === 'play'){
+  // leash constraint (not during ending, and not while the cat is in the arms)
+  if (gameState === 'play' && cat.state !== 'held'){
     // while examining something interesting, the cat digs in and anchors YOU
     const planted = ['lay','watchHedge','sniffCar','stareBottle','roll','relief','bury','playWorm'].includes(cat.state);
     const d = dist(cat, player);
@@ -2236,7 +2285,7 @@ function wob(n, seedShift){ // tiny deterministic wobble for hand-drawn HUD bits
 }
 
 function drawLeash(variant){
-  if (gameState !== 'play') return;
+  if (gameState !== 'play' || cat.state === 'held') return;   // no taut leash while cradled
   const hx = player.x - camX + (player.flip ? -10 : 10);
   const hy = player.y - camY - 44;
   const cx2 = cat.x - camX, cy2 = cat.y - camY - 14 - cat.zOff;
@@ -2621,8 +2670,14 @@ function render(now){
   });
   // while in a tree, sort just below the tree's anchor so he draws over its canopy
   const catUp = (cat.state === 'inTree' || cat.state === 'downTree') && cat.treeSpot;
-  ents.push({ y: catUp ? cat.treeSpot.y + 12 : cat.y,
+  const catHeld = cat.state === 'held';
+  ents.push({ y: catHeld ? player.y + 1 : (catUp ? cat.treeSpot.y + 12 : cat.y),
               draw: () => {
+    if (catHeld){    // curled up in the person's arms, wriggling near the end
+      drawSprite(SPR.cat.lay, variant,
+        { x: player.x + (player.flip ? -3 : 3), y: player.y - 38, flip: player.flip, rot: cat.squirmRot });
+      return;
+    }
     // in a tree, face so the paws grip the trunk (flip when on the tree's right)
     const catFlip = catUp ? (cat.x > cat.treeSpot.x) : cat.flip;
     drawSprite(SPR.cat[cat.pose], variant, { x: cat.x, y: cat.y - cat.zOff, flip: catFlip });
