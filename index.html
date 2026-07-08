@@ -1509,7 +1509,8 @@ function update(dt){
     }
     h.x += Math.cos(h.dir) * h.speed * dt;
     h.y += Math.sin(h.dir) * h.speed * dt;
-    h.flip = Math.cos(h.dir) < 0;
+    const hx = Math.cos(h.dir);
+    if (Math.abs(hx) > 0.2) h.flip = hx < 0;   // keep facing when near-vertical, avoids flip jitter
     h.animT += dt;
     h.pose = (Math.floor(h.animT / 0.11) % 2) ? 'walk1' : 'walk0';   // fast legs
     collide(h);
