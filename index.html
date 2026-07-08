@@ -1182,7 +1182,7 @@ function playClip(name, vol, pitch){
 }
 const rpitch = (range) => 1 + (Math.random() - 0.5) * range;
 const pickR = (a) => a[Math.floor(Math.random() * a.length)];
-function playMeow(){ playClip(pickR(['meow','meow2','meow3']), 0.9, rpitch(0.18)); }
+function playMeow(){ playClip(pickR(['meow','meow2','meow3']), 0.3, rpitch(0.18)); }
 function playHiss(){ playClip(pickR(['hiss','hiss2']), 0.9, rpitch(0.16)); }
 function playMumble(){ playClip(pickR(['mumble','mumble2','mumble3']), 0.65, rpitch(0.2)); }
 function playPurr(){ playClip('purr', 0.9, rpitch(0.1)); }
