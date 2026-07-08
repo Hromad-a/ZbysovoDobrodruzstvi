@@ -720,6 +720,26 @@ function drawWorld(rc, g, s){
     g.restore();
   });
 
+  // TEST: little hand-drawn grass tufts scattered over the green, clipped to it
+  g.save();
+  g.beginPath(); GREEN.forEach(addGreenPath); g.clip();          // green union
+  g.beginPath();
+  g.rect(0, 0, WORLD_W, WORLD_H);
+  g.rect(-2, HROAD.y, WORLD_W + 4, HROAD.h);
+  g.rect(VROAD.x, -2, VROAD.w, WORLD_H + 4);
+  BUILDINGS.forEach(b => g.rect(b.x, b.y, b.w, b.h));
+  g.clip('evenodd');                                             // − roads − buildings
+  for (let gy = 55; gy < WORLD_H; gy += 50){
+    for (let gx = 35; gx < WORLD_W; gx += 50){
+      if (!isGreen(gx, gy)) continue;
+      const j = (gx * 13 + gy * 7) % 53, x = gx + (j % 19), y = gy + (j % 15), ts = 9400 + gx + gy;
+      rc.line(x, y, x - 4, y - 13, opts(ts,   null, null, {stroke:'#4f7742', strokeWidth:2.4, roughness:2.2}));
+      rc.line(x + 1, y, x + 1, y - 16, opts(ts+1, null, null, {stroke:'#4f7742', strokeWidth:2.4, roughness:2.2}));
+      rc.line(x + 2, y, x + 6, y - 12, opts(ts+2, null, null, {stroke:'#4f7742', strokeWidth:2.4, roughness:2.2}));
+    }
+  }
+  g.restore();
+
   // park path (pink) across the park green
   rc.curve([[320,600],[520,520],[700,480],[860,540]],
     opts(s+6, null, null, {stroke:PAL.pink, strokeWidth:10, roughness:2.6}));
