@@ -938,7 +938,7 @@ let gameState = 'start';  // start | play | ending | done
 let camX = 0, camY = 0, camInit = false;
 
 const player = { x: 260, y: 1080, r: 12, kind: null, pose: 'walk0', flip: false,
-                 animT: 0, moving: false, idleT: 0, special: null, specialT: 0 };
+                 animT: 0, moving: false, idleT: 0, special: null, specialT: 0, stepBeat: -1 };
 // the other person arrives later by tram: away -> walking -> waiting
 const dest   = { x: 1790, y: 340, r: 12, kind: null, pose: 'walk0', flip: true,
                  state: 'away', animT: 0,
@@ -975,7 +975,7 @@ const HEDGE_SPAWNS = [
 HEDGE_SPAWNS.forEach((p, i) => hedgehogs.push({
   x: p[0], y: p[1], r: 8, pose: 'walk0', flip: false, animT: 0,
   dir: Math.random() * 6.28, moveT: 1 + Math.random() * 2, paused: false,
-  line: HEDGE_LINES[i % HEDGE_LINES.length], talked: false, cooldown: 0
+  line: HEDGE_LINES[i % HEDGE_LINES.length], talked: false, cooldown: 0, lastBeat: -1
 }));
 
 // other neighbours out walking, some with dogs (leashed or not, varied types)
@@ -1020,6 +1020,7 @@ let winTimer = 4 + Math.random() * 6;
 const marks = [];      // {x, y, kind:'pee'|'poop'}
 const dirt = [];       // {x,y,vx,vy,t} specks flung while the cat buries them
 let catChatCooldown = 14 + Math.random() * 12;
+let shoutTimer = 30 + Math.random() * 50;   // occasional rowdy street noise
 
 // weather: 0 clear · 1 light rain · 2 rain · 3 storm (may drift over the walk)
 function pickWeather(){ const r = Math.random(); return r < 0.55 ? 0 : r < 0.8 ? 1 : r < 0.93 ? 2 : 3; }
@@ -1051,7 +1052,9 @@ let AC = null, masterGain = null, rainGain = null, audioOn = false, muted = fals
 const SFX = {};          // name -> decoded AudioBuffer
 let rainStarted = false;
 const SFX_FILES = { meow:'meow.mp3', hiss:'hiss.mp3', purr:'purr.mp3',
-                    bark:'bark.mp3', thunder:'thunder.mp3', rain:'rain.mp3' };
+                    bark:'bark.mp3', thunder:'thunder.mp3', rain:'rain.mp3',
+                    car:'car.mp3', tram:'tram.mp3', shout:'shout.mp3',
+                    mumble:'mumble.mp3', thump:'thump.mp3', step:'step.mp3' };
 function initAudio(){
   if (AC){ if (AC.state === 'suspended') AC.resume(); return; }
   try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
@@ -1089,6 +1092,12 @@ function playBark(){ playClip('bark', 0.8); }
 function playHiss(){ playClip('hiss', 0.9); }
 function playThunder(){ playClip('thunder', 1.0); }
 function playPurr(){ playClip('purr', 0.9); }
+function playCar(){ playClip('car', 0.4); }
+function playTram(){ playClip('tram', 0.55); }
+function playShout(){ playClip('shout', 0.6); }
+function playMumble(){ playClip('mumble', 0.65); }
+function playThump(){ playClip('thump', 0.4); }
+function playStep(){ playClip('step', 0.22); }
 
 // ===================== INPUT =====================
 const keys = {};
@@ -1159,7 +1168,9 @@ function update(dt){
     player.y += iv.y * speed * dt;
     if (iv.x) player.flip = iv.x < 0;
     player.animT += dt;
-    player.pose = (Math.floor(player.animT / 0.24) % 2) ? 'walk1' : 'walk0';
+    const beat = Math.floor(player.animT / 0.24);
+    player.pose = (beat % 2) ? 'walk1' : 'walk0';
+    if (beat !== player.stepBeat){ player.stepBeat = beat; if (beat % 2 === 0) playStep(); }
     player.idleT = 0; player.special = null;
   } else if (gameState === 'play'){
     // idle quirks: the boy checks his phone, the girl crouches to pet the cat
@@ -1192,8 +1203,9 @@ function update(dt){
       if (peek.t <= 0){ peek.visible = true; peek.dur = 3.5 + Math.random() * 2; }
     }
   }
-  if (arrivalMode === 'tram' && tram.state === 'away' && playT >= tram.arriveAt)
-    tram.state = 'arriving';
+  if (arrivalMode === 'tram' && tram.state === 'away' && playT >= tram.arriveAt){
+    tram.state = 'arriving'; playTram();
+  }
   if (tram.state === 'arriving'){
     tram.x -= clamp((tram.x - tram.stopX) * 1.4, 40, 340) * dt;   // ease into the stop
     if (tram.x <= tram.stopX + 1){ tram.x = tram.stopX; tram.state = 'doors'; tram.t = 0; }
@@ -1253,6 +1265,7 @@ function update(dt){
       movingCars.push({ x: eastbound ? -140 : WORLD_W + 140,
         y: eastbound ? 748 : 790, vx: eastbound ? sp : -sp,
         spr: ['a', 'b', 'c'][Math.floor(Math.random() * 3)] });
+      playCar();
     }
     carTimer = 22 + Math.random() * 55;    // very rarely
   }
@@ -1366,8 +1379,8 @@ function update(dt){
   while (RAIN.length < wantRain)
     RAIN.push({ x: Math.random() * (VW + 240) - 120, y: Math.random() * VH,
                 sp: 620 + Math.random() * 380 + weatherLevel * 90,
-                len: 7 + Math.random() * (6 + weatherLevel * 4),
-                wind: -30 - weatherLevel * 35 });
+                len: 6 + Math.random() * (5 + weatherLevel * 3),
+                w: 2.4 + Math.random() * 2.2, wind: -30 - weatherLevel * 35 });
   if (RAIN.length > wantRain) RAIN.length = wantRain;
   for (const d of RAIN){
     d.y += d.sp * dt; d.x += d.wind * dt;
@@ -1385,6 +1398,20 @@ function update(dt){
     }
   }
   if (flash > 0) flash = Math.max(0, flash - dt * 2.8);
+
+  // ---- rowdy street noise + the cat's grumbly reaction ----
+  shoutTimer -= dt;
+  if (shoutTimer <= 0){
+    if (gameState === 'play'){
+      playShout();
+      if (!bubbles.some(b => b.ent === cat)){
+        say(cat, CAT_STREET_LINES[Math.floor(Math.random() * CAT_STREET_LINES.length)], 3.2);
+        setTimeout(playMumble, 700);              // annoyed mumble after the complaint
+        catChatCooldown = Math.max(catChatCooldown, 12);
+      }
+    }
+    shoutTimer = 45 + Math.random() * 75;
+  }
 
   // ---- cat FSM ----
   catTalkCooldown -= dt;
@@ -1427,7 +1454,7 @@ function update(dt){
       if (weatherLevel >= 2 && Math.random() < 0.7) pool = CAT_RAIN_LINES;
       else if (noisyFolks && Math.random() < 0.6) pool = CAT_STREET_LINES;
       else pool = CAT_MUSINGS;
-      say(cat, pool[Math.floor(Math.random() * pool.length)], 2.8);
+      say(cat, pool[Math.floor(Math.random() * pool.length)], 2.8); playMumble();
       catChatCooldown = 18 + Math.random() * 16;
     }
     // occasional call of nature on a nearby patch of grass (within leash)
@@ -1511,7 +1538,7 @@ function update(dt){
       } else {
         cat.script = [
           { at: 0.8, fn(){ say(h, h.talked ? HEDGE_ALT[Math.floor(Math.random()*HEDGE_ALT.length)] : h.line); } },
-          { at: 4.6, fn(){ say(cat, CAT_LINES[Math.floor(Math.random()*CAT_LINES.length)]); } },
+          { at: 4.6, fn(){ say(cat, CAT_LINES[Math.floor(Math.random()*CAT_LINES.length)]); playMumble(); } },
           { at: 7.0, fn(){
               h.talked = true; h.cooldown = 30; h.paused = false;
               cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
@@ -1703,7 +1730,16 @@ function update(dt){
   // ---- hedgehogs ----
   for (const h of hedgehogs){
     h.cooldown -= dt;
-    if (h.paused) continue;
+    if (h.paused){
+      // dupat — stomp its feet while it's the one talking to the cat
+      if (h === cat.target && cat.state === 'lay' && bubbles.some(b => b.ent === h)){
+        h.animT += dt;
+        const beat = Math.floor(h.animT / 0.26);
+        h.pose = (beat % 2) ? 'walk1' : 'walk0';
+        if (beat !== h.lastBeat){ h.lastBeat = beat; playThump(); }
+      }
+      continue;
+    }
     h.moveT -= dt;
     if (h.moveT <= 0){
       h.dir = Math.random() * Math.PI * 2;
@@ -1972,11 +2008,17 @@ function drawWeather(){
     ctx.fillStyle = '#3a4157'; ctx.fillRect(0, 0, VW, VH); ctx.restore();
   }
   if (RAIN.length){
+    // chunky hand-drawn drops — thick rounded strokes in an inky blue-grey
     ctx.save();
-    ctx.strokeStyle = 'rgba(205,214,230,0.5)'; ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    for (const d of RAIN){ ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.wind * 0.02 - 1, d.y + d.len); }
-    ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = '#5a6a92'; ctx.lineCap = 'round'; ctx.globalAlpha = 0.55;
+    for (const d of RAIN){
+      ctx.lineWidth = d.w;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x + d.wind * 0.02 - 1.5, d.y + d.len);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
   if (flash > 0){                                // lightning
     ctx.save();
