@@ -1124,57 +1124,99 @@ function say(ent, text, dur){
 let catTalkCooldown = 3;
 
 // ===================== AUDIO (sampled — ElevenLabs clips) =====================
-let AC = null, masterGain = null, rainGain = null, audioOn = false, muted = false;
-const SFX = {};          // name -> decoded AudioBuffer
-let rainStarted = false;
-const SFX_FILES = { meow:'meow.mp3', hiss:'hiss.mp3', purr:'purr.mp3',
-                    bark:'bark.mp3', thunder:'thunder.mp3', rain:'rain.mp3',
-                    car:'car.mp3', tram:'tram.mp3', shout:'shout.mp3',
-                    mumble:'mumble.mp3', thump:'thump.mp3', step:'step.mp3', munch:'munch.mp3' };
+let AC = null, masterGain = null, audioOn = false, muted = false;
+const SFX = {};            // name -> decoded AudioBuffer
+const loops = {};          // looping beds: name -> {gain, src}
+const LOOP_NAMES = ['rain', 'birds', 'crickets'];
+const SFX_FILES = {
+  meow:'sounds/meow.mp3', meow2:'sounds/meow2.mp3', meow3:'sounds/meow3.mp3',
+  hiss:'sounds/hiss.mp3', hiss2:'sounds/hiss2.mp3', purr:'sounds/purr.mp3',
+  mumble:'sounds/mumble.mp3', mumble2:'sounds/mumble2.mp3', mumble3:'sounds/mumble3.mp3',
+  bark:'sounds/bark.mp3', thunder:'sounds/thunder.mp3', rain:'sounds/rain.mp3',
+  carloop:'sounds/carloop.mp3', tram:'sounds/tram.mp3', shout:'sounds/shout.mp3',
+  thump:'sounds/thump.mp3', step:'sounds/step.mp3', munch:'sounds/munch.mp3',
+  birds:'sounds/birds.mp3', crickets:'sounds/crickets.mp3'
+};
 function initAudio(){
   if (AC){ if (AC.state === 'suspended') AC.resume(); return; }
   try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
-  masterGain = AC.createGain(); masterGain.gain.value = 0.7; masterGain.connect(AC.destination);
-  rainGain = AC.createGain(); rainGain.gain.value = 0; rainGain.connect(masterGain);
+  masterGain = AC.createGain(); masterGain.gain.value = muted ? 0 : 0.7; masterGain.connect(AC.destination);
   audioOn = true;
+  for (const n of LOOP_NAMES){ const gn = AC.createGain(); gn.gain.value = 0; gn.connect(masterGain); loops[n] = { node: gn, src: null }; }
   for (const name in SFX_FILES){
-    fetch(SFX_FILES[name])
-      .then(r => r.arrayBuffer())
-      .then(a => AC.decodeAudioData(a))
-      .then(buf => {
-        SFX[name] = buf;
-        if (name === 'rain' && !rainStarted){     // start the looping rain bed
-          rainStarted = true;
-          const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
-          src.connect(rainGain); src.start();
-        }
-      })
-      .catch(() => {});
+    fetch(SFX_FILES[name]).then(r => r.arrayBuffer()).then(a => AC.decodeAudioData(a)).then(buf => {
+      SFX[name] = buf;
+      if (loops[name] && !loops[name].src){       // start the looping bed once decoded
+        const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+        src.connect(loops[name].node); src.start(); loops[name].src = src;
+      }
+    }).catch(() => {});
   }
 }
 function updateAudio(){
   if (!audioOn) return;
-  masterGain.gain.setTargetAtTime(muted ? 0 : 0.7, AC.currentTime, 0.05);
-  rainGain.gain.setTargetAtTime(([0, 0.2, 0.5, 0.8][weatherLevel] || 0), AC.currentTime, 0.6);
+  const t = AC.currentTime;
+  masterGain.gain.setTargetAtTime(muted ? 0 : 0.7, t, 0.08);
+  const dayT = dayPhase(), wet = weatherLevel >= 2 ? 0.4 : 1;
+  if (loops.rain)     loops.rain.node.gain.setTargetAtTime(([0,0.2,0.5,0.8][weatherLevel] || 0), t, 0.8);
+  if (loops.birds)    loops.birds.node.gain.setTargetAtTime(clamp(1 - dayT * 2.2, 0, 1) * 0.17 * wet, t, 1.2);
+  if (loops.crickets) loops.crickets.node.gain.setTargetAtTime(clamp((dayT - 0.35) / 0.4, 0, 1) * 0.22 * wet, t, 1.2);
+  updateCarAudio();
 }
-function playClip(name, vol){
+// one-shots: short fade in/out envelope + optional pitch variation
+function playClip(name, vol, pitch){
   if (!audioOn || muted || !SFX[name]) return;
-  const src = AC.createBufferSource(); src.buffer = SFX[name];
-  const g = AC.createGain(); g.gain.value = vol == null ? 1 : vol;
-  src.connect(g); g.connect(masterGain); src.start();
+  const t = AC.currentTime, buf = SFX[name];
+  const src = AC.createBufferSource(); src.buffer = buf;
+  if (pitch) src.playbackRate.value = pitch;
+  const dur = buf.duration / (src.playbackRate.value || 1);
+  const v = vol == null ? 1 : vol, atk = Math.min(0.04, dur * 0.25), rel = Math.min(0.12, dur * 0.35);
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(v, t + atk);
+  g.gain.setValueAtTime(v, t + Math.max(atk, dur - rel));
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  src.connect(g); g.connect(masterGain); src.start(); src.stop(t + dur + 0.03);
 }
-function playMeow(){ playClip('meow', 0.9); }
-function playBark(){ playClip('bark', 0.8); }
-function playHiss(){ playClip('hiss', 0.9); }
+const rpitch = (range) => 1 + (Math.random() - 0.5) * range;
+const pickR = (a) => a[Math.floor(Math.random() * a.length)];
+function playMeow(){ playClip(pickR(['meow','meow2','meow3']), 0.9, rpitch(0.18)); }
+function playHiss(){ playClip(pickR(['hiss','hiss2']), 0.9, rpitch(0.16)); }
+function playMumble(){ playClip(pickR(['mumble','mumble2','mumble3']), 0.65, rpitch(0.2)); }
+function playPurr(){ playClip('purr', 0.9, rpitch(0.1)); }
+function playBark(){ playClip('bark', 0.8, rpitch(0.14)); }
 function playThunder(){ playClip('thunder', 1.0); }
-function playPurr(){ playClip('purr', 0.9); }
-function playCar(){ playClip('car', 0.4); }
-function playTram(){ playClip('tram', 0.55); }
-function playShout(){ playClip('shout', 0.6); }
-function playMumble(){ playClip('mumble', 0.65); }
-function playThump(){ playClip('thump', 0.4); }
-function playStep(){ playClip('step', 0.22); }
-function playMunch(){ playClip('munch', 0.7); }
+function playTram(){ playClip('tram', 0.55, rpitch(0.05)); }
+function playShout(){ playClip('shout', 0.6, rpitch(0.08)); }
+function playThump(){ playClip('thump', 0.4, rpitch(0.15)); }
+function playStep(){ playClip('step', 0.18, rpitch(0.12)); }
+function playMunch(){ playClip('munch', 0.6); }
+// per-car engine loop that follows the car (volume by distance, pan by side)
+function carAudioStart(mc){
+  const g = AC.createGain(); g.gain.value = 0;
+  const pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
+  const src = AC.createBufferSource(); src.buffer = SFX.carloop; src.loop = true;
+  src.playbackRate.value = 0.9 + Math.random() * 0.25;
+  if (pan){ src.connect(pan); pan.connect(g); } else src.connect(g);
+  g.connect(masterGain); src.start();
+  mc.audio = { g, pan, src };
+}
+function updateCarAudio(){
+  for (const mc of movingCars){
+    if (!mc.audio && SFX.carloop) carAudioStart(mc);
+    if (mc.audio){
+      const d = Math.hypot(mc.x - player.x, mc.y - player.y);
+      mc.audio.g.gain.setTargetAtTime(clamp(1 - d / 750, 0, 1) * 0.33, AC.currentTime, 0.15);
+      if (mc.audio.pan) mc.audio.pan.pan.setTargetAtTime(clamp((mc.x - player.x) / 500, -1, 1), AC.currentTime, 0.15);
+    }
+  }
+}
+function carAudioStop(mc){
+  if (!mc.audio) return;
+  const a = mc.audio; mc.audio = null;
+  a.g.gain.setTargetAtTime(0, AC.currentTime, 0.2);
+  setTimeout(() => { try { a.src.stop(); } catch(e){} }, 600);
+}
 
 // ===================== INPUT =====================
 const keys = {};
@@ -1303,7 +1345,7 @@ function update(dt){
   } else if (tram.state === 'doors'){
     tram.t += dt;
     if (tram.t > 2.4){
-      tram.state = 'leaving'; tram.vx = 30;
+      tram.state = 'leaving'; tram.vx = 30; playTram();   // rings off as it departs
       dest.state = 'walking'; dest.x = tram.stopX; dest.y = 726;
     }
   } else if (tram.state === 'leaving'){
@@ -1356,13 +1398,14 @@ function update(dt){
       movingCars.push({ x: eastbound ? -140 : WORLD_W + 140,
         y: eastbound ? 748 : 790, vx: eastbound ? sp : -sp,
         spr: ['a', 'b', 'c'][Math.floor(Math.random() * 3)] });
-      playCar();
     }
     carTimer = 22 + Math.random() * 55;    // very rarely
   }
   for (let i = movingCars.length - 1; i >= 0; i--){
     movingCars[i].x += movingCars[i].vx * dt;
-    if (movingCars[i].x < -180 || movingCars[i].x > WORLD_W + 180) movingCars.splice(i, 1);
+    if (movingCars[i].x < -180 || movingCars[i].x > WORLD_W + 180){
+      carAudioStop(movingCars[i]); movingCars.splice(i, 1);
+    }
   }
 
   // ---- other people & their dogs ----
@@ -2082,7 +2125,7 @@ function drawNight(){
     ctx.restore();
   }
   const darkA = Math.pow(dayT, 1.6) * 0.62;
-  if (darkA < 0.02) return;
+  if (darkA < 0.02 || VW < 1 || VH < 1) return;
   if (night.width !== VW || night.height !== VH){ night.width = VW; night.height = VH; }
   const ng = night.getContext('2d');
   ng.globalCompositeOperation = 'source-over';
