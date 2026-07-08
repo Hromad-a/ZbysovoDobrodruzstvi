@@ -570,6 +570,28 @@ function drawMound(rc, g, s){
     opts(s, '#a67c52', 'hachure', {hachureGap:2.5, strokeWidth:1.6}));
 }
 
+function drawHare(rc, g, s, pose){
+  // skittish hare, side view facing right; anchor bottom-centre of 56x48
+  const step = pose === 'walk1', lc = '#8a6a44';
+  if (step){
+    rc.line(18,34, 9,46, opts(s+1, null, null, {stroke:lc, strokeWidth:3}));
+    rc.line(24,34,30,46, opts(s+2, null, null, {stroke:lc, strokeWidth:3}));
+    rc.line(40,34,37,44, opts(s+3, null, null, {stroke:lc, strokeWidth:2.5}));
+    rc.line(45,34,48,44, opts(s+4, null, null, {stroke:lc, strokeWidth:2.5}));
+  } else {
+    rc.line(16,34,21,46, opts(s+1, null, null, {stroke:lc, strokeWidth:3}));
+    rc.line(24,34,16,46, opts(s+2, null, null, {stroke:lc, strokeWidth:3}));
+    rc.line(40,34,42,44, opts(s+3, null, null, {stroke:lc, strokeWidth:2.5}));
+    rc.line(45,34,43,44, opts(s+4, null, null, {stroke:lc, strokeWidth:2.5}));
+  }
+  rc.ellipse(28, 30, 34, 18, opts(s, '#b58a5a', 'hachure', {hachureGap:2.6, fillWeight:2.4, strokeWidth:2}));
+  rc.ellipse(45, 24, 15, 13, opts(s+5, '#b58a5a', 'hachure', {hachureGap:2.6, fillWeight:2.4}));
+  rc.line(44, 18, 41, 3, opts(s+6, null, null, {stroke:'#b58a5a', strokeWidth:3.5}));   // ears
+  rc.line(48, 18, 49, 3, opts(s+7, null, null, {stroke:'#b58a5a', strokeWidth:3.5}));
+  rc.circle(48, 22, 2, opts(s+8, INK, 'solid', {roughness:.6}));                        // eye
+  rc.circle(11, 28, 3.4, opts(s+9, '#e8dcc4', 'solid', {roughness:.8}));                // fluffy tail
+}
+
 function drawDog(rc, g, s, pose, col){
   // side view facing left; anchor bottom center of an 80x58 box
   const step = pose === 'walk1' ? 3 : 0;
@@ -731,6 +753,8 @@ const SPR = {
            climb:  makeSprite(48,72,(r,g,s)=>drawCat(r,g,s,'climb')),
            scared: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'scared')),
            lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
+  hare:  { walk0: makeSprite(56,48,(r,g,s)=>drawHare(r,g,s,'walk0')),
+           walk1: makeSprite(56,48,(r,g,s)=>drawHare(r,g,s,'walk1')) },
   hedge: { walk0: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
            walk1: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
   tree:  { v0: makeSprite(60,100,(r,g,s)=>drawTree(r,g,s,0)),
@@ -1038,11 +1062,21 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  sniffT: 0, target: null, stateT: 0, script: null,
                  treeSpot: null, treeCooldown: 6, zOff: 0,
                  wormTarget: null, carriedWorm: null, wormEatAt: null, dragT: 0,
-                 scaredOf: null, reliefCooldown: 40 + Math.random() * 40,
+                 scaredOf: null, hareTarget: null, reliefCooldown: 40 + Math.random() * 40,
                  reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0 };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
 let wormTimer = 15;
+// skittish hares that dart around and always flee
+const hares = [];
+let hareTimer = 18 + Math.random() * 26;
+function spawnHare(){
+  const e = Math.floor(Math.random() * 4);
+  const x = e === 0 ? 30 : e === 1 ? WORLD_W - 30 : 40 + Math.random() * (WORLD_W - 80);
+  const y = e === 2 ? 30 : e === 3 ? WORLD_H - 30 : 40 + Math.random() * (WORLD_H - 80);
+  hares.push({ x, y, r: 7, dir: Math.random() * 6.28, speed: 150, moveT: 1,
+               animT: 0, pose: 'walk0', flip: false, t: 0, life: 16 + Math.random() * 14 });
+}
 const hedgehogs = [];
 const HEDGE_SPAWNS = [
   [980, 640], [1210, 560], [560, 760],  [760, 880],
@@ -1394,6 +1428,33 @@ function update(dt){
     if (w.state === 'emerging' && w.t > 0.9){ w.state = 'out'; w.t = 0; }
     else if (w.state === 'out' && w.t > 30) w.state = 'gone';
   }
+
+  // ---- hares: dart around, flee from the cat/player, despawn after a while ----
+  hareTimer -= dt;
+  if (hareTimer <= 0){
+    if (hares.length < 2) spawnHare();
+    hareTimer = 24 + Math.random() * 34;
+  }
+  for (let i = hares.length - 1; i >= 0; i--){
+    const h = hares[i]; h.t += dt;
+    const threat = dist(h, cat) < dist(h, player) ? cat : player;
+    if (dist(h, threat) < 210){                       // bolt straight away
+      h.dir = Math.atan2(h.y - threat.y, h.x - threat.x);
+      h.speed = 245;
+    } else {
+      h.moveT -= dt;
+      if (h.moveT <= 0){ h.dir += (Math.random() - 0.5) * 2.2; h.moveT = 0.4 + Math.random() * 1.1; }
+      h.speed = 150;
+    }
+    h.x += Math.cos(h.dir) * h.speed * dt;
+    h.y += Math.sin(h.dir) * h.speed * dt;
+    h.flip = Math.cos(h.dir) < 0;
+    h.animT += dt;
+    h.pose = (Math.floor(h.animT / 0.11) % 2) ? 'walk1' : 'walk0';   // fast legs
+    collide(h);
+    if (h.x <= 20 || h.x >= WORLD_W - 20 || h.y <= 20 || h.y >= WORLD_H - 20) h.dir += Math.PI;
+    if (h.t > h.life) hares.splice(i, 1);
+  }
   // flung dirt specks (from the cat burying)
   for (let i = dirt.length - 1; i >= 0; i--){
     const d = dirt[i]; d.t += dt; d.vy += 320 * dt;
@@ -1685,8 +1746,18 @@ function update(dt){
       }
       if (cat.state === 'wander') cat.reliefCooldown = 6;   // none reachable, retry soon
     }
+    // spot a hare and give chase (it always gets away)
+    if (cat.state === 'wander'){
+      for (const h of hares){
+        if (dist(cat, h) < 170){
+          cat.state = 'chaseHare'; cat.hareTarget = h; cat.stateT = 0;
+          say(cat, T.cat.excited, 1); playMeow();
+          break;
+        }
+      }
+    }
     // spot a hedgehog
-    if (catTalkCooldown <= 0){
+    if (cat.state === 'wander' && catTalkCooldown <= 0){
       for (const h of hedgehogs){
         if (h.cooldown <= 0 && dist(cat, h) < 95){
           cat.state = 'approach'; cat.target = h; cat.stateT = 0;
@@ -1781,6 +1852,13 @@ function update(dt){
       cat.state = 'wander'; cat.stateT = 0;
       say(cat, EAT_LINES[Math.floor(Math.random() * EAT_LINES.length)], 2.6);
     }
+  }
+  else if (cat.state === 'chaseHare'){
+    const h = cat.hareTarget;
+    // hare gone, escaped, or he's chased long enough — give up (never catches it)
+    if (!h || hares.indexOf(h) < 0 || dist(cat, h) > 340 || cat.stateT > 5){
+      cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 3;
+    } else { catTarget = h; catSpeed = 235; }         // the leash reins him in anyway
   }
   else if (cat.state === 'toWorm'){
     const w = cat.wormTarget;
@@ -1977,7 +2055,8 @@ function update(dt){
   if (gameState === 'play' && dest.state === 'waiting' && dist(player, dest) < 95 &&
       (cat.state === 'wander' || cat.state === 'approach' ||
        cat.state === 'dashTree' || cat.state === 'toWorm' || cat.state === 'scared' ||
-       cat.state === 'toRelief' || cat.state === 'relief' || cat.state === 'bury')){
+       cat.state === 'toRelief' || cat.state === 'relief' || cat.state === 'bury' ||
+       cat.state === 'chaseHare')){
     gameState = 'ending';
     if (cat.target) cat.target.paused = false;
     cat.state = 'toDest'; cat.stateT = 0;
@@ -2382,6 +2461,7 @@ function render(now){
   movingCars.forEach(mc => shadow({ x: mc.x, y: mc.y }, 40, 8));
   peds.forEach(p => { shadow(p, 15, 5); if (p.dog) shadow(p.dog, 18 * p.dog.scale, 5); });
   hedgehogs.forEach(h => shadow(h, 14, 4));
+  hares.forEach(h => shadow(h, 14, 4));
   TREES.forEach(t => {
     const e = { x: t[0], y: t[1] };
     shadow(e, 20, 6);
@@ -2426,6 +2506,7 @@ function render(now){
         { x: cat.x + (cat.flip ? -26 : 26), y: cat.y - 10 - cat.zOff, flip: cat.flip });
   } });
   hedgehogs.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hedge[h.pose], variant, h) }));
+  hares.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hare[h.pose], variant, h) }));
   TREES.forEach((t, i) => ents.push({ y: t[1], draw: () => drawSprite(SPR.tree['v' + (i % 3)], variant, { x: t[0], y: t[1], flip: false }) }));
   ents.sort((a, b) => a.y - b.y);
   ents.forEach(e => e.draw());
