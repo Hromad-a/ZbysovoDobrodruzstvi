@@ -33,6 +33,7 @@
   button.char:hover,button.char:focus-visible{transform:rotate(0) scale(1.06);outline:3px dashed var(--ink);outline-offset:4px}
   button.char canvas{display:block;margin:0 auto 6px}
   .hint{font-size:13px;opacity:.75;margin-top:8px}
+  #startScreen{background:transparent}
   #endScreen{background:rgba(244,234,210,.94)}
   #endScreen p{font-size:clamp(16px,3.5vw,22px);max-width:480px;line-height:1.6}
   button.again{background:#fdf6e6;border:3px solid var(--ink);color:var(--ink);font-family:inherit;
@@ -532,6 +533,25 @@ function drawTree(rc, g, s, kind){
   }
 }
 
+// a big leaping cat for the intro background; legs splayed differently per variant
+function drawJumpCat(rc, g, s, legs){
+  const co = opts(s, PAL.cat, 'hachure', {hachureGap:2.6, fillWeight:2.6, strokeWidth:2.4});
+  legs.forEach((L, i) => rc.line(L[0], L[1], L[2], L[3], opts(s+1+i, null, null, {stroke:PAL.cat, strokeWidth:4})));
+  rc.ellipse(50, 34, 60, 24, co);                                   // stretched body
+  rc.curve([[22,32],[8,24],[2,9]], opts(s+9, null, null, {stroke:PAL.cat, strokeWidth:5}));   // streaming tail
+  rc.ellipse(80, 28, 22, 18, opts(s+6, PAL.cat, 'hachure', {hachureGap:2.6, fillWeight:2.6}));// head (front)
+  rc.polygon([[72,20],[74,10],[80,19]], opts(s+7, PAL.cat, 'solid'));   // ears back
+  rc.polygon([[82,19],[88,10],[89,21]], opts(s+8, PAL.cat, 'solid'));
+  rc.circle(77, 26, 3, opts(s+10, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));     // eyes
+  rc.circle(85, 26, 3, opts(s+11, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
+}
+const JUMP_LEGS = [
+  [[38,44,24,58],[46,46,44,62],[58,46,62,62],[66,44,82,56]],   // wide splay
+  [[38,44,30,62],[46,46,40,58],[58,46,66,58],[66,44,74,62]],   // gathered
+  [[38,44,20,52],[46,46,36,64],[58,46,58,64],[66,44,86,52]],   // front/back stretch
+  [[40,44,28,64],[48,46,52,60],[56,46,50,64],[64,44,84,60]],   // tucked kick
+];
+
 // townsfolk clothing/hair palettes (distinct from the two mains)
 const PED_PALS = [
   { coat:'#6a7fae', hair:'#33333a', hat:'#2f3a52' },  // blue coat, dark hair, cap
@@ -588,7 +608,8 @@ const SPR = {
            cream1: makeSprite(80,58,(r,g,s)=>drawDog(r,g,s,'walk1','#e0d2ac')) },
   car:   { a: makeSprite(100,46,(r,g,s)=>drawCarSprite(r,g,s,PAL.car1)),
            b: makeSprite(100,46,(r,g,s)=>drawCarSprite(r,g,s,PAL.car2)),
-           c: makeSprite(100,46,(r,g,s)=>drawCarSprite(r,g,s,PAL.car3)) }
+           c: makeSprite(100,46,(r,g,s)=>drawCarSprite(r,g,s,PAL.car3)) },
+  jumpcat: JUMP_LEGS.map(legs => makeSprite(100,64,(r,g,s)=>drawJumpCat(r,g,s,legs))),
 };
 
 // ===================== WORLD =====================
@@ -2018,11 +2039,45 @@ function drawJoystick(){
   ctx.restore();
 }
 
+// ---------- intro: a big cat leaping across the select-screen background ----------
+const introCat = { active: false, t: 0, dur: 0.5, x0: 0, x1: 0, y0: 0, y1: 0, arc: 0, variant: 0, flip: false };
+let introTimer = 0.6 + Math.random() * 1.2;
+function updateIntro(dt){
+  if (introCat.active){
+    if ((introCat.t += dt) >= introCat.dur) introCat.active = false;
+  } else if ((introTimer -= dt) <= 0){
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    introCat.active = true; introCat.t = 0;
+    introCat.dur = 0.4 + Math.random() * 0.25;
+    introCat.flip = dir < 0;
+    introCat.x0 = dir > 0 ? -160 : VW + 160;
+    introCat.x1 = dir > 0 ? VW + 160 : -160;
+    introCat.y0 = 140 + Math.random() * Math.max(40, VH - 300);
+    introCat.y1 = introCat.y0 + (Math.random() * 140 - 70);
+    introCat.arc = 130 + Math.random() * 170;
+    introCat.variant = Math.floor(Math.random() * JUMP_LEGS.length);
+    introTimer = 1.1 + Math.random() * 2.3;                 // gap between glimpses
+  }
+}
+function drawIntro(){
+  if (!introCat.active) return;
+  const p = introCat.t / introCat.dur;
+  const x = introCat.x0 + (introCat.x1 - introCat.x0) * p;
+  const y = introCat.y0 + (introCat.y1 - introCat.y0) * p - Math.sin(p * Math.PI) * introCat.arc;
+  const spr = SPR.jumpcat[introCat.variant], img = spr[0], sc = 2.3;
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.translate(x, y);
+  if (introCat.flip) ctx.scale(-1, 1);
+  ctx.drawImage(img, -spr.w * sc / 2, -spr.h * sc / 2, spr.w * sc, spr.h * sc);
+  ctx.restore();
+}
+
 function render(now){
   const variant = Math.floor(now / BOIL_MS) % 2;
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, VW, VH);
-  if (gameState === 'start') return;
+  if (gameState === 'start'){ drawIntro(); return; }
 
   // world
   ctx.drawImage(worldLayers[variant],
@@ -2125,6 +2180,7 @@ let last = performance.now();
 function loop(now){
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  if (gameState === 'start') updateIntro(dt);
   update(dt);
   render(now);
   updateAudio();
