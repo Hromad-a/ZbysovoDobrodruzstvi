@@ -631,7 +631,7 @@ const BUILDINGS = [
 ];
 const HROAD = {y: 700, h: 120};                    // horizontal road
 const VROAD = {x: 1280, w: 110};                   // vertical road
-const PARK  = [[210,260],[860,240],[980,430],[920,610],[690,690],[360,690],[190,500]];
+const PARK  = [[220,360],[880,350],[990,480],[930,620],[690,690],[360,690],[200,540]];
 const CARS = [
   {x: 860, y: 660, w: 96, h: 40, c:PAL.car1},
   {x:1030, y: 662, w: 96, h: 40, c:PAL.car2},
@@ -640,27 +640,23 @@ const CARS = [
 ];
 const BINS = [ {x:460, y:250}, {x:1600, y:300}, {x:1010, y:1160} ];
 const TREES = [ [420,520],[560,430],[700,560],[360,430],[620,620],  // park
-                [160,600],             // left of park
-                [1720,440],[1850,520], // top-right green near B2
-                [1780,1040],[1600,980],// bottom-right green near B5
-                [420,1050],[820,1080], // bottom green near B3/B4
-                [1080,320] ];          // top-center green
+                [260,560],             // park
+                [1720,440],[1850,520], // top-right zone (B2)
+                [1780,1040],[1600,980],// bottom-right zone (B5)
+                [300,1050],[820,1080], // bottom-left / bottom-center zones
+                [720,180] ];           // top-left zone (B0/B1)
 const LAMPS = [ [300,690],[700,690],[1100,690],[1520,690],[1880,690],
                 [500,845],[900,845],[1460,845],[1780,845],
                 [1250,300],[1250,1010],[1420,480],[1420,1200],
                 [450,580],[720,470] ];
-// big green areas around the building clusters [cx,cy,width,height] (boxes)
-const GRASS = [ [1660,430,640,360],   // top-right (B2)
-                [1650,1040,700,380],  // bottom-right (B5)
-                [560,1060,820,380],   // bottom (B3/B4)
-                [150,560,360,400],    // left strip by the park
-                [1080,340,360,260] ]; // top-center
-// boxy grass courtyards under the building clusters (were pink pavement)
-const COURTYARDS = [
-  [[60,40],[760,30],[780,300],[70,320]],
-  [[1560,60],[1960,70],[1950,420],[1580,400]],
-  [[60,900],[1000,920],[1010,1380],[70,1390]],
-  [[1540,1060],[1950,1080],[1940,1400],[1550,1390]],
+// separate, non-overlapping green zones, one per building cluster [x,y,w,h].
+// each has bare ground around it and a clean hole cut for its building(s).
+const GREENZONES = [
+  [40, 40, 760, 290],     // top-left (B0, B1)
+  [1430, 60, 540, 520],   // top-right (B2)
+  [40, 900, 340, 500],    // bottom-left (B3)
+  [520, 1010, 500, 400],  // bottom-center (B4)
+  [1500, 960, 480, 450],  // bottom-right (B5)
 ];
 
 BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
@@ -684,41 +680,20 @@ function drawWorld(rc, g, s){
     }
   }
 
-  // green regions — courtyards, park, big grass areas, and a patch under
-  // every tree. Each one is clipped to (world − roads − buildings − any green
-  // already drawn) so they don't double up where they overlap, they cut a
-  // clean hole for each building, and they stay off the roads.
-  const GREEN = [];
-  COURTYARDS.forEach((q, i) => GREEN.push({ t:'poly', q,
-    o: opts(9001+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:3, strokeWidth:1.9, roughness:2.7, bowing:3}) }));
-  GREEN.push({ t:'poly', q: PARK,
-    o: opts(s+5, PAL.green, 'zigzag', {hachureGap:9, fillWeight:3, strokeWidth:2, roughness:2.8, bowing:3}) });
-  GRASS.forEach((gr, i) => GREEN.push({ t:'rect', x:gr[0]-gr[2]/2, y:gr[1]-gr[3]/2, w:gr[2], h:gr[3],
-    o: opts(9200+i, PAL.green, 'zigzag', {hachureGap:10, fillWeight:3, strokeWidth:1.9, roughness:2.6, bowing:2.4}) }));
-  TREES.forEach((t, i) => GREEN.push({ t:'ellipse', cx:t[0], cy:t[1]+8, rx:46, ry:25,
-    o: opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:2.8, strokeWidth:1.8, bowing:2}) }));
-
-  const addGreenPath = (s) => {
-    if (s.t === 'poly'){ g.moveTo(s.q[0][0], s.q[0][1]); for (let k=1;k<s.q.length;k++) g.lineTo(s.q[k][0], s.q[k][1]); g.closePath(); }
-    else if (s.t === 'rect') g.rect(s.x, s.y, s.w, s.h);
-    else g.ellipse(s.cx, s.cy, s.rx, s.ry, 0, 0, Math.PI * 2);
-  };
-  GREEN.forEach((s, i) => {
-    g.save();
-    g.beginPath();
-    g.rect(0, 0, WORLD_W, WORLD_H);
-    g.rect(-2, HROAD.y, WORLD_W + 4, HROAD.h);
-    g.rect(VROAD.x, -2, VROAD.w, WORLD_H + 4);
-    BUILDINGS.forEach(b => g.rect(b.x, b.y, b.w, b.h));
-    g.clip('evenodd');                                  // world − roads − buildings
-    for (let j = 0; j < i; j++){                         // − each earlier green shape
-      g.beginPath(); g.rect(0, 0, WORLD_W, WORLD_H); addGreenPath(GREEN[j]); g.clip('evenodd');
-    }
-    if (s.t === 'poly') rc.polygon(s.q, s.o);
-    else if (s.t === 'rect') rc.rectangle(s.x, s.y, s.w, s.h, s.o);
-    else rc.ellipse(s.cx, s.cy, s.rx * 2, s.ry * 2, s.o);
-    g.restore();
-  });
+  // green ground — separate, non-overlapping zones (one per building cluster)
+  // plus the park. Clipped once to (world − roads − buildings) so the grass
+  // stays off the roads and cuts a clean hole around each building.
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, WORLD_W, WORLD_H);
+  g.rect(-2, HROAD.y, WORLD_W + 4, HROAD.h);
+  g.rect(VROAD.x, -2, VROAD.w, WORLD_H + 4);
+  BUILDINGS.forEach(b => g.rect(b.x, b.y, b.w, b.h));
+  g.clip('evenodd');
+  GREENZONES.forEach((z, i) => rc.rectangle(z[0], z[1], z[2], z[3],
+    opts(9200+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:3, strokeWidth:1.9, roughness:2.6, bowing:2.4})));
+  rc.polygon(PARK, opts(s+5, PAL.green, 'zigzag', {hachureGap:9, fillWeight:3, strokeWidth:2, roughness:2.8, bowing:3}));
+  g.restore();
 
   // park path (pink) across the park green
   rc.curve([[320,600],[520,520],[700,480],[860,540]],
@@ -935,18 +910,17 @@ function inPoly(px, py, poly){
 }
 function isGreen(x, y){
   if (inPoly(x, y, PARK)) return true;
-  for (const q of COURTYARDS) if (inPoly(x, y, q)) return true;
-  for (const gr of GRASS){
-    if (Math.abs(x - gr[0]) < gr[2] / 2 && Math.abs(y - gr[1]) < gr[3] / 2) return true;
+  for (const z of GREENZONES){
+    if (x > z[0] && x < z[0] + z[2] && y > z[1] && y < z[1] + z[3]) return true;
   }
   return false;
 }
 function randomParkPoint(){
   for (let k = 0; k < 30; k++){
-    const x = 210 + Math.random() * 760, y = 270 + Math.random() * 390;
+    const x = 210 + Math.random() * 760, y = 360 + Math.random() * 330;
     if (inPoly(x, y, PARK)) return { x, y };
   }
-  return { x: 520, y: 500 };
+  return { x: 520, y: 520 };
 }
 
 let chosen = null;        // 'woman' | 'man'
