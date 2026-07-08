@@ -174,6 +174,7 @@
   },
   "dog": { "bark": "Haf!" },
   "dest": { "arrive": "Tady jsem!" },
+  "player": { "bottle": "To je jen dvoulitrovej Brankář Zbýšo, to nic." },
   "passersby": [
     "Ježiš, to je kočka? A to se jí chce takhle na vodítku? Naše kočka by úplně šílela.",
     "Počkat… vy venčíte kočku? To jsem teda ještě neviděl.",
@@ -570,6 +571,16 @@ function drawMound(rc, g, s){
     opts(s, '#a67c52', 'hachure', {hachureGap:2.5, strokeWidth:1.6}));
 }
 
+function drawBottle(rc, g, s){
+  // a 2L PET beer bottle (Braník) standing on the ground; anchor bottom-centre 22x42
+  rc.polygon([[4,40],[4,18],[7,11],[8,5],[14,5],[15,11],[18,18],[18,40]],
+    opts(s, '#c8a24a', 'hachure', {hachureGap:2.4, fillWeight:2.2, strokeWidth:1.8, roughness:1.6}));
+  rc.rectangle(8, 1, 6, 5, opts(s+1, '#3a6b3a', 'solid', {strokeWidth:1.4, roughness:1.2}));   // green cap
+  rc.rectangle(5, 22, 12, 12, opts(s+2, '#eee4cc', 'solid', {strokeWidth:1.5, roughness:1.4})); // label
+  rc.line(6, 26, 16, 26, opts(s+3, null, null, {stroke:'#b0413e', strokeWidth:2, roughness:1}));
+  rc.line(7, 30, 15, 30, opts(s+4, null, null, {strokeWidth:1, roughness:.8}));
+}
+
 function drawHare(rc, g, s, pose){
   // skittish hare, side view facing right; anchor bottom-centre of 56x48
   const step = pose === 'walk1', lc = '#8a6a44';
@@ -755,6 +766,7 @@ const SPR = {
            lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
   hare:  { walk0: makeSprite(56,48,(r,g,s)=>drawHare(r,g,s,'walk0')),
            walk1: makeSprite(56,48,(r,g,s)=>drawHare(r,g,s,'walk1')) },
+  bottle:{ idle:  makeSprite(22,42,(r,g,s)=>drawBottle(r,g,s)) },
   hedge: { walk0: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
            walk1: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
   tree:  { v0: makeSprite(60,100,(r,g,s)=>drawTree(r,g,s,0)),
@@ -826,6 +838,8 @@ const GREENZONES = [
 ];
 // park & courtyard benches [x,y] (top-left of the 60x10 seat) — the player sits when idle beside one
 const BENCHES = [ [480,600],[720,510],[300,1000],[1560,320],[1700,1080] ];
+// discarded 2L Braník bottles the cat stops to stare at [x,y]
+const BOTTLES = [ [560,650],[1650,1060],[330,980] ];
 
 BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
 CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
@@ -1062,7 +1076,9 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  sniffT: 0, target: null, stateT: 0, script: null,
                  treeSpot: null, treeCooldown: 6, zOff: 0,
                  wormTarget: null, carriedWorm: null, wormEatAt: null, dragT: 0,
-                 scaredOf: null, hareTarget: null, reliefCooldown: 40 + Math.random() * 40,
+                 scaredOf: null, hareTarget: null, carSpot: null, watchDur: 0,
+                 carSniffCooldown: 15 + Math.random() * 20, bottleCooldown: 22 + Math.random() * 25,
+                 bottleSpot: null, reliefCooldown: 40 + Math.random() * 40,
                  reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0 };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
@@ -1797,37 +1813,103 @@ function update(dt){
       }
       if (cat.state === 'wander') cat.treeCooldown = 3;  // no tree around, re-check soon
     }
+    // curiosity: go sniff a nearby parked car
+    cat.carSniffCooldown -= dt;
+    if (cat.state === 'wander' && cat.carSniffCooldown <= 0){
+      for (const c of CARS){
+        const cx = c.x + c.w / 2, cy = c.y + c.h;
+        if (Math.hypot(cat.x - cx, cat.y - cy) < 150 &&
+            Math.hypot(player.x - cx, player.y - cy) < LEASH_LEN - 12){
+          cat.state = 'toCar'; cat.carSpot = { x: cx, y: cy }; cat.stateT = 0; break;
+        }
+      }
+      if (cat.state === 'wander') cat.carSniffCooldown = 5;
+    }
+    // stop and stare at a discarded Braník bottle
+    cat.bottleCooldown -= dt;
+    if (cat.state === 'wander' && cat.bottleCooldown <= 0){
+      for (const b of BOTTLES){
+        if (Math.hypot(cat.x - b[0], cat.y - b[1]) < 150 &&
+            Math.hypot(player.x - b[0], player.y - b[1]) < LEASH_LEN - 12){
+          cat.state = 'toBottle'; cat.bottleSpot = { x: b[0], y: b[1] }; cat.stateT = 0; break;
+        }
+      }
+      if (cat.state === 'wander') cat.bottleCooldown = 5;
+    }
+  }
+  else if (cat.state === 'toBottle'){
+    catTarget = { x: cat.bottleSpot.x - 24, y: cat.bottleSpot.y + 4 }; catSpeed = 120;
+    if (dist(cat, catTarget) < 16){
+      cat.state = 'stareBottle'; cat.stateT = 0; catTarget = null; catSpeed = 0;
+      cat.flip = cat.bottleSpot.x < cat.x;
+      if (!bubbles.some(b => b.ent === player)) say(player, T.player.bottle, 4);   // "…dvoulitrovej Brankář Zbýšo…"
+    } else if (cat.stateT > 4){ cat.state = 'wander'; cat.stateT = 0; cat.bottleCooldown = 15; }
+  }
+  else if (cat.state === 'stareBottle'){
+    catSpeed = 0; cat.pose = 'stalk0';               // fixated, low and still
+    cat.flip = cat.bottleSpot.x < cat.x;
+    if (cat.stateT > 4.5){ cat.state = 'wander'; cat.stateT = 0; cat.bottleCooldown = 30 + Math.random() * 30; }
+  }
+  else if (cat.state === 'toCar'){
+    catTarget = cat.carSpot; catSpeed = 120;
+    if (dist(cat, cat.carSpot) < 16){ cat.state = 'sniffCar'; cat.stateT = 0; catTarget = null; catSpeed = 0; }
+    else if (cat.stateT > 4){ cat.state = 'wander'; cat.stateT = 0; cat.carSniffCooldown = 15; }
+  }
+  else if (cat.state === 'sniffCar'){
+    catSpeed = 0;
+    cat.flip = cat.carSpot.x < cat.x;
+    cat.pose = (Math.floor(cat.stateT / 0.4) % 2) ? 'stalk1' : 'stalk0';   // slow sniff bob
+    if (cat.stateT > 3.5){
+      cat.state = 'wander'; cat.stateT = 0; cat.carSniffCooldown = 28 + Math.random() * 30;
+      if (!bubbles.some(b => b.ent === cat)){ say(cat, CAT_MUSINGS[Math.floor(Math.random()*CAT_MUSINGS.length)], 2.4); playMumble(); }
+    }
+  }
+  else if (cat.state === 'watchHedge'){
+    catSpeed = 0; cat.pose = 'lay';
+    const h = cat.target;
+    if (h) cat.flip = h.x < cat.x;                 // keep an eye on it as it wanders
+    if (!h || cat.stateT > cat.watchDur || (h && dist(cat, h) > 200)){
+      if (h) h.cooldown = 20;
+      cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 6;
+      if (!bubbles.some(b => b.ent === cat)){ say(cat, CAT_MUSINGS[Math.floor(Math.random()*CAT_MUSINGS.length)], 2.6); playMumble(); }
+    }
   }
   else if (cat.state === 'approach'){
     // stalk the hedgehog — it keeps wandering, the cat follows it
     catTarget = cat.target; catSpeed = 130;
     if (dist(cat, cat.target) < 30){
-      cat.state = 'lay'; cat.stateT = 0; cat.pose = 'lay';
-      catTarget = null; catSpeed = 0;   // stop this tick or the walk pose overwrites 'lay'
       const h = cat.target;
-      h.paused = true;
-      if (cat.carriedWorm){
-        // deliver the worm — the hedgehog is grateful and shares real info
-        cat.script = [
-          { at: 0.8, fn(){ playMunch(); say(h, dest.state !== 'away' ? WORM_INFO_ARRIVED
-              : arrivalMode === 'tram' ? WORM_INFO_SOON : WORM_INFO_WINDOW, 7); } },
-          { at: 6.2, fn(){ say(cat, T.cat.wormComment, 2.2); } },
-          { at: 8.6, fn(){
-              if (cat.carriedWorm) cat.carriedWorm.state = 'gone';
-              cat.carriedWorm = null;
-              h.talked = true; h.cooldown = 30; h.paused = false;
-              cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
-          } }
-        ];
+      catTarget = null; catSpeed = 0;   // stop this tick or the walk pose overwrites the pose
+      if (!cat.carriedWorm && Math.random() < 0.5){
+        // just lie down and watch it for a long while (it keeps wandering)
+        cat.state = 'watchHedge'; cat.stateT = 0; cat.pose = 'lay';
+        cat.watchDur = 8 + Math.random() * 6;
       } else {
-        cat.script = [
-          { at: 0.8, fn(){ say(h, h.talked ? HEDGE_ALT[Math.floor(Math.random()*HEDGE_ALT.length)] : h.line); } },
-          { at: 4.6, fn(){ say(cat, CAT_LINES[Math.floor(Math.random()*CAT_LINES.length)]); playMumble(); } },
-          { at: 7.0, fn(){
-              h.talked = true; h.cooldown = 30; h.paused = false;
-              cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
-          } }
-        ];
+        cat.state = 'lay'; cat.stateT = 0; cat.pose = 'lay';
+        h.paused = true;
+        if (cat.carriedWorm){
+          // deliver the worm — the hedgehog is grateful and shares real info
+          cat.script = [
+            { at: 0.8, fn(){ playMunch(); say(h, dest.state !== 'away' ? WORM_INFO_ARRIVED
+                : arrivalMode === 'tram' ? WORM_INFO_SOON : WORM_INFO_WINDOW, 7); } },
+            { at: 6.2, fn(){ say(cat, T.cat.wormComment, 2.2); } },
+            { at: 8.6, fn(){
+                if (cat.carriedWorm) cat.carriedWorm.state = 'gone';
+                cat.carriedWorm = null;
+                h.talked = true; h.cooldown = 30; h.paused = false;
+                cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
+            } }
+          ];
+        } else {
+          cat.script = [
+            { at: 0.8, fn(){ say(h, h.talked ? HEDGE_ALT[Math.floor(Math.random()*HEDGE_ALT.length)] : h.line); } },
+            { at: 4.6, fn(){ say(cat, CAT_LINES[Math.floor(Math.random()*CAT_LINES.length)]); playMumble(); } },
+            { at: 7.0, fn(){
+                h.talked = true; h.cooldown = 30; h.paused = false;
+                cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 7;
+            } }
+          ];
+        }
       }
     } else if (cat.stateT > 4){ // gave up (leash too short etc.)
       cat.target.paused = false;
@@ -1997,22 +2079,28 @@ function update(dt){
 
   // leash constraint (not during ending — leash unclipped)
   if (gameState === 'play'){
+    // while examining something interesting, the cat digs in and anchors YOU
+    const planted = ['lay','watchHedge','sniffCar','stareBottle','relief','bury','playWorm'].includes(cat.state);
     const d = dist(cat, player);
-    if (d > LEASH_LEN){
+    if (planted){
+      if (d > LEASH_LEN){
+        const vx = (player.x - cat.x) / d, vy = (player.y - cat.y) / d;
+        player.x = cat.x + vx * LEASH_LEN;     // he holds his ground — pull the player back
+        player.y = cat.y + vy * LEASH_LEN;
+        cat.dragT += dt;
+        if (cat.dragT > 1.4){                   // you insist long enough — he relents
+          if (cat.target){ cat.target.paused = false; cat.target.cooldown = 10; }
+          cat.script = null; cat.wormTarget = null;
+          cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 5;
+          say(cat, T.cat.dragged, 1.6); cat.dragT = 0;
+        }
+      } else cat.dragT = 0;
+    } else if (d > LEASH_LEN){                   // normal: the cat is reined to the player
       const vx = (cat.x - player.x) / d, vy = (cat.y - player.y) / d;
       cat.x = player.x + vx * LEASH_LEN;
       cat.y = player.y + vy * LEASH_LEN;
-      // dragged for a while — he gives in, gets up and walks along
       cat.dragT += dt;
-      if (cat.dragT > 0.6){
-        if (cat.state === 'lay'){
-          if (cat.target){ cat.target.paused = false; cat.target.cooldown = 10; }
-          cat.script = null;
-          cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 5;
-          say(cat, T.cat.dragged, 1.6);
-        }
-        if (cat.sniffT > 0) cat.sniffT = -2;   // no sniff-sitting while towed
-      }
+      if (cat.dragT > 0.6 && cat.sniffT > 0) cat.sniffT = -2;   // no sniff-sitting while towed
     } else {
       cat.dragT = 0;
     }
@@ -2056,7 +2144,8 @@ function update(dt){
       (cat.state === 'wander' || cat.state === 'approach' ||
        cat.state === 'dashTree' || cat.state === 'toWorm' || cat.state === 'scared' ||
        cat.state === 'toRelief' || cat.state === 'relief' || cat.state === 'bury' ||
-       cat.state === 'chaseHare')){
+       cat.state === 'chaseHare' || cat.state === 'toCar' || cat.state === 'sniffCar' ||
+       cat.state === 'watchHedge' || cat.state === 'toBottle' || cat.state === 'stareBottle')){
     gameState = 'ending';
     if (cat.target) cat.target.paused = false;
     cat.state = 'toDest'; cat.stateT = 0;
@@ -2462,6 +2551,7 @@ function render(now){
   peds.forEach(p => { shadow(p, 15, 5); if (p.dog) shadow(p.dog, 18 * p.dog.scale, 5); });
   hedgehogs.forEach(h => shadow(h, 14, 4));
   hares.forEach(h => shadow(h, 14, 4));
+  BOTTLES.forEach(b => shadow({ x: b[0], y: b[1] }, 8, 3));
   TREES.forEach(t => {
     const e = { x: t[0], y: t[1] };
     shadow(e, 20, 6);
@@ -2507,6 +2597,7 @@ function render(now){
   } });
   hedgehogs.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hedge[h.pose], variant, h) }));
   hares.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hare[h.pose], variant, h) }));
+  BOTTLES.forEach(b => ents.push({ y: b[1], draw: () => drawSprite(SPR.bottle.idle, variant, { x: b[0], y: b[1], flip: false }) }));
   TREES.forEach((t, i) => ents.push({ y: t[1], draw: () => drawSprite(SPR.tree['v' + (i % 3)], variant, { x: t[0], y: t[1], flip: false }) }));
   ents.sort((a, b) => a.y - b.y);
   ents.forEach(e => e.draw());
