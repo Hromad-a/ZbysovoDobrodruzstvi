@@ -1498,14 +1498,30 @@ function update(dt){
   }
   for (let i = hares.length - 1; i >= 0; i--){
     const h = hares[i]; h.t += dt;
-    const threat = dist(h, cat) < dist(h, player) ? cat : player;
-    if (dist(h, threat) < 210){                       // bolt straight away
-      h.dir = Math.atan2(h.y - threat.y, h.x - threat.x);
-      h.speed = 245;
+    // once its time is up the hare leaves for good — never just vanish in view:
+    // if it's already off-screen remove it, otherwise flag it to bolt off the
+    // nearest edge of the view and only despawn once it's actually out of sight
+    if (!h.leaving && h.t > h.life){
+      const onScreen = h.x > camX - 30 && h.x < camX + VW + 30 && h.y > camY - 30 && h.y < camY + VH + 30;
+      if (!onScreen){ hares.splice(i, 1); continue; }
+      h.leaving = true;
+    }
+    if (h.leaving){
+      // run straight off the closest edge of the view, ignoring threats/wander
+      const dl = h.x - camX, dr = camX + VW - h.x, dtp = h.y - camY, db = camY + VH - h.y;
+      const m = Math.min(dl, dr, dtp, db);
+      h.dir = m === dl ? Math.PI : m === dr ? 0 : m === dtp ? -Math.PI / 2 : Math.PI / 2;
+      h.speed = 260;
     } else {
-      h.moveT -= dt;
-      if (h.moveT <= 0){ h.dir += (Math.random() - 0.5) * 2.2; h.moveT = 0.4 + Math.random() * 1.1; }
-      h.speed = 150;
+      const threat = dist(h, cat) < dist(h, player) ? cat : player;
+      if (dist(h, threat) < 210){                     // bolt straight away
+        h.dir = Math.atan2(h.y - threat.y, h.x - threat.x);
+        h.speed = 245;
+      } else {
+        h.moveT -= dt;
+        if (h.moveT <= 0){ h.dir += (Math.random() - 0.5) * 2.2; h.moveT = 0.4 + Math.random() * 1.1; }
+        h.speed = 150;
+      }
     }
     h.x += Math.cos(h.dir) * h.speed * dt;
     h.y += Math.sin(h.dir) * h.speed * dt;
@@ -1513,9 +1529,12 @@ function update(dt){
     if (Math.abs(hx) > 0.2) h.flip = hx < 0;   // keep facing when near-vertical, avoids flip jitter
     h.animT += dt;
     h.pose = (Math.floor(h.animT / 0.11) % 2) ? 'walk1' : 'walk0';   // fast legs
-    collide(h);
-    if (h.x <= 20 || h.x >= WORLD_W - 20 || h.y <= 20 || h.y >= WORLD_H - 20) h.dir += Math.PI;
-    if (h.t > h.life) hares.splice(i, 1);
+    if (!h.leaving){
+      collide(h);
+      if (h.x <= 20 || h.x >= WORLD_W - 20 || h.y <= 20 || h.y >= WORLD_H - 20) h.dir += Math.PI;
+    } else if (h.x < camX - 60 || h.x > camX + VW + 60 || h.y < camY - 60 || h.y > camY + VH + 60){
+      hares.splice(i, 1);                       // fully off-screen now — gone
+    }
   }
   // flung dirt specks (from the cat burying)
   for (let i = dirt.length - 1; i >= 0; i--){
