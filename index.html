@@ -1027,7 +1027,8 @@ function pickWeather(){ const r = Math.random(); return r < 0.55 ? 0 : r < 0.8 ?
 let weatherLevel = pickWeather();
 let weatherTimer = 30 + Math.random() * 40;
 const RAIN = [];       // screen-space raindrops
-let flash = 0, boltPts = null, lightningCooldown = 6 + Math.random() * 10;
+let flash = 0, boltPts = null, boltFork = null, lightningCooldown = 6 + Math.random() * 10;
+let roughMain = null;   // Rough.js wrapper on the main canvas, for the hand-drawn bolt
 let prevRainy = false;
 // puddles that grow while it rains (level >= 2) and dry out afterwards
 const puddles = [];
@@ -1394,6 +1395,15 @@ function update(dt){
       pts.push([bx, by]);
       while (by < VH * 0.55){ by += 22 + Math.random() * 30; bx += (Math.random() - 0.5) * 60; pts.push([bx, by]); }
       boltPts = pts;
+      // a branching fork off a mid point
+      const fi = Math.floor(pts.length * (0.4 + Math.random() * 0.3));
+      let fx = pts[fi][0], fy = pts[fi][1]; const fork = [[fx, fy]];
+      const steps = 2 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < steps; k++){
+        fy += 18 + Math.random() * 26; fx += (Math.random() < 0.5 ? -1 : 1) * (22 + Math.random() * 40);
+        fork.push([fx, fy]);
+      }
+      boltFork = fork;
       setTimeout(playThunder, 150 + Math.random() * 500);   // thunder trails the flash
     }
   }
@@ -2025,11 +2035,13 @@ function drawWeather(){
     ctx.globalAlpha = flash * 0.55; ctx.fillStyle = '#f6f0d8';
     ctx.fillRect(0, 0, VW, VH);
     if (boltPts && flash > 0.45){
-      ctx.globalAlpha = flash; ctx.strokeStyle = '#fff8e0'; ctx.lineWidth = 2.6;
-      ctx.lineJoin = 'round';
-      ctx.beginPath(); ctx.moveTo(boltPts[0][0], boltPts[0][1]);
-      for (const p of boltPts) ctx.lineTo(p[0], p[1]);
-      ctx.stroke();
+      // hand-drawn jagged bolt via Rough.js (re-randomises each frame -> glitchy)
+      if (!roughMain) roughMain = rough.canvas(cvs);
+      ctx.globalAlpha = flash * 0.5;
+      roughMain.linearPath(boltPts, {stroke:'#fff3c8', strokeWidth:7, roughness:2.5, bowing:1});
+      ctx.globalAlpha = flash;
+      roughMain.linearPath(boltPts, {stroke:'#fffef0', strokeWidth:2.6, roughness:2.9, bowing:1.2});
+      if (boltFork) roughMain.linearPath(boltFork, {stroke:'#fffef0', strokeWidth:2, roughness:2.9, bowing:1.2});
     }
     ctx.restore();
   }
