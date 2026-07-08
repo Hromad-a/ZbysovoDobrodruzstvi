@@ -684,34 +684,45 @@ function drawWorld(rc, g, s){
     }
   }
 
-  // keep all grass out of the road bands — clip to the world minus the roads
-  g.save();
-  g.beginPath();
-  g.rect(0, 0, WORLD_W, WORLD_H);
-  g.rect(-2, HROAD.y, WORLD_W + 4, HROAD.h);
-  g.rect(VROAD.x, -2, VROAD.w, WORLD_H + 4);
-  g.clip('evenodd');
+  // green regions — courtyards, park, big grass areas, and a patch under
+  // every tree. Each one is clipped to (world − roads − buildings − any green
+  // already drawn) so they don't double up where they overlap, they cut a
+  // clean hole for each building, and they stay off the roads.
+  const GREEN = [];
+  COURTYARDS.forEach((q, i) => GREEN.push({ t:'poly', q,
+    o: opts(9001+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:3, strokeWidth:1.9, roughness:2.7, bowing:3}) }));
+  GREEN.push({ t:'poly', q: PARK,
+    o: opts(s+5, PAL.green, 'zigzag', {hachureGap:9, fillWeight:3, strokeWidth:2, roughness:2.8, bowing:3}) });
+  GRASS.forEach((gr, i) => GREEN.push({ t:'rect', x:gr[0]-gr[2]/2, y:gr[1]-gr[3]/2, w:gr[2], h:gr[3],
+    o: opts(9200+i, PAL.green, 'zigzag', {hachureGap:10, fillWeight:3, strokeWidth:1.9, roughness:2.6, bowing:2.4}) }));
+  TREES.forEach((t, i) => GREEN.push({ t:'ellipse', cx:t[0], cy:t[1]+8, rx:46, ry:25,
+    o: opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:2.8, strokeWidth:1.8, bowing:2}) }));
 
-  // boxy grass courtyards under the building clusters (fixed seeds, crooked edges)
-  COURTYARDS.forEach((q, i) => rc.polygon(q,
-    opts(9001+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.9, roughness:2.7, bowing:3})));
+  const addGreenPath = (s) => {
+    if (s.t === 'poly'){ g.moveTo(s.q[0][0], s.q[0][1]); for (let k=1;k<s.q.length;k++) g.lineTo(s.q[k][0], s.q[k][1]); g.closePath(); }
+    else if (s.t === 'rect') g.rect(s.x, s.y, s.w, s.h);
+    else g.ellipse(s.cx, s.cy, s.rx, s.ry, 0, 0, Math.PI * 2);
+  };
+  GREEN.forEach((s, i) => {
+    g.save();
+    g.beginPath();
+    g.rect(0, 0, WORLD_W, WORLD_H);
+    g.rect(-2, HROAD.y, WORLD_W + 4, HROAD.h);
+    g.rect(VROAD.x, -2, VROAD.w, WORLD_H + 4);
+    BUILDINGS.forEach(b => g.rect(b.x, b.y, b.w, b.h));
+    g.clip('evenodd');                                  // world − roads − buildings
+    for (let j = 0; j < i; j++){                         // − each earlier green shape
+      g.beginPath(); g.rect(0, 0, WORLD_W, WORLD_H); addGreenPath(GREEN[j]); g.clip('evenodd');
+    }
+    if (s.t === 'poly') rc.polygon(s.q, s.o);
+    else if (s.t === 'rect') rc.rectangle(s.x, s.y, s.w, s.h, s.o);
+    else rc.ellipse(s.cx, s.cy, s.rx * 2, s.ry * 2, s.o);
+    g.restore();
+  });
 
-  // park (crooked outline)
-  rc.polygon(PARK, opts(s+5, PAL.green, 'zigzag', {hachureGap:8, fillWeight:2, strokeWidth:2, roughness:2.8, bowing:3}));
-  // park path
+  // park path (pink) across the park green
   rc.curve([[320,600],[520,520],[700,480],[860,540]],
     opts(s+6, null, null, {stroke:PAL.pink, strokeWidth:10, roughness:2.6}));
-
-  // big green areas around the building clusters + a patch under every tree,
-  // so nothing green sprouts straight out of bare paper or pavement. Drawn
-  // before the roads/buildings (fixed seeds, no boil) so they never cover a
-  // road or a facade — those paint over any overlap.
-  GRASS.forEach((gr, i) => rc.rectangle(gr[0]-gr[2]/2, gr[1]-gr[3]/2, gr[2], gr[3],
-    opts(9200+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:1.8, strokeWidth:1.9, roughness:2.6, bowing:2.4})));
-  TREES.forEach((t, i) => rc.ellipse(t[0], t[1]+8, 92, 50,
-    opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
-
-  g.restore();   // end grass clip
 
   // roads — fixed seeds (not derived from s) so they stay identical in both
   // boil variants; a large flickering hachure field was too distracting
