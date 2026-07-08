@@ -25,13 +25,17 @@
   h1{font-size:clamp(28px,6vw,52px);margin:0;transform:rotate(-2deg);letter-spacing:1px}
   .sub{font-size:clamp(14px,3vw,19px);max-width:520px;line-height:1.5;transform:rotate(.5deg)}
   .chars{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
-  button.char{background:#fdf6e6;border:3px solid var(--ink);cursor:pointer;padding:14px 18px 10px;
-    border-radius:18px 6px 22px 8px/8px 20px 6px 18px;
-    font-family:inherit;color:var(--ink);font-size:17px;transition:transform .15s}
-  button.char:nth-child(1){transform:rotate(-1.5deg)}
+  button.char{background:#fdf6e6;border:2.5px solid var(--ink);cursor:pointer;padding:16px 22px 12px;
+    border-radius:20px 7px 24px 9px/9px 22px 7px 20px;
+    font-family:inherit;color:var(--ink);font-size:17px;transition:transform .15s, box-shadow .15s;
+    box-shadow:5px 6px 0 rgba(58,64,102,.18), inset 0 0 0 1.5px rgba(58,64,102,.25)}
+  button.char:nth-child(1){transform:rotate(-1.8deg)}
   button.char:nth-child(2){transform:rotate(1.8deg)}
-  button.char:hover,button.char:focus-visible{transform:rotate(0) scale(1.06);outline:3px dashed var(--ink);outline-offset:4px}
-  button.char canvas{display:block;margin:0 auto 6px}
+  button.char:hover,button.char:focus-visible{transform:rotate(0) scale(1.06);
+    outline:2.5px dashed var(--ink);outline-offset:5px;
+    box-shadow:7px 9px 0 rgba(58,64,102,.22), inset 0 0 0 1.5px rgba(58,64,102,.35)}
+  button.char canvas{display:block;margin:0 auto 4px}
+  button.char .lbl{display:block;margin-top:2px;font-size:21px;letter-spacing:1px;transform:rotate(-1deg)}
   .hint{font-size:13px;opacity:.75;margin-top:8px}
   #startScreen{background:transparent}
   #endScreen{background:rgba(244,234,210,.94)}
@@ -51,8 +55,8 @@
   <h1>Zbýšovo Dobrodružství</h1>
   <div class="sub">Vyber, kdo dnes jde s kocourem na procházku.<br>Ten druhý se objeví na druhém konci sídliště.</div>
   <div class="chars">
-    <button class="char" id="pickWoman"><canvas id="pw" width="120" height="180"></canvas>ona</button>
-    <button class="char" id="pickMan"><canvas id="pm" width="120" height="180"></canvas>on</button>
+    <button class="char" id="pickWoman"><canvas id="pw" width="120" height="180"></canvas><span class="lbl">ona</span></button>
+    <button class="char" id="pickMan"><canvas id="pm" width="120" height="180"></canvas><span class="lbl">on</span></button>
   </div>
   <div class="hint">WASD / šipky &nbsp;·&nbsp; na mobilu polož prst a táhni</div>
 </div>
@@ -62,6 +66,127 @@
   <p id="endText"></p>
   <button class="again" onclick="location.reload()">ještě jednou</button>
 </div>
+
+<!-- =========================================================================
+     GAME TEXTS — edit any of these strings to change the in-game text.
+     Arrays are pools the game picks from at random. Keep it valid JSON
+     (double quotes, commas between items, no trailing comma). {who} in the
+     ending is replaced by the other person's pronoun.
+     ========================================================================= -->
+<script type="application/json" id="game-texts">
+{
+  "ui": {
+    "title": "Zbýšovo Dobrodružství",
+    "subtitle1": "Vyber, kdo dnes jde s kocourem na procházku.",
+    "subtitle2": "Ten druhý se objeví na druhém konci sídliště.",
+    "hint": "WASD / šipky · na mobilu polož prst a táhni",
+    "pickWoman": "ona",
+    "pickMan": "on",
+    "endTitle": "Konec procházky",
+    "endText": "{who} se skloní a drbe kocoura za ušima. Kocour přede.<br><br>Došli jste. Ale nejhezčí byla stejně ta cesta —<br>i s těmi ježky.",
+    "endWho": { "woman": "On", "man": "Ona" }
+  },
+  "cat": {
+    "start": "Mňau. Tak jdem.",
+    "excited": "!",
+    "scared": "Fss!",
+    "gotWorm": "Mám ji.",
+    "wormComment": "Stejně se kroutila moc.",
+    "hop": "Hop.",
+    "pee": "Uf. Líp.",
+    "poop": "Tak. Teď je to moje.",
+    "dragged": "No dobře, už jdu.",
+    "purr": "Prrrr.",
+    "lines": [
+      "Ten ježek toho namluví.",
+      "Hm.",
+      "Tak jdeme dál.",
+      "Zajímavé. Asi.",
+      "Mrrr.",
+      "Ježci. Samá filozofie, žádné myši.",
+      "Tohle už jsem někde slyšel.",
+      "Hluboké. Skoro jako miska.",
+      "Mňau. Teda… souhlasím.",
+      "Kdyby radši mlčel, mohli jsme čmuchat.",
+      "Já bych to neřešil."
+    ],
+    "street": [
+      "Zase někdo řve na ulici. Lidi.",
+      "Támhleti dělají v noci bordel a ráno spí.",
+      "Řvou, běhají, nechají tu nepořádek. A já jsem prý divný.",
+      "Slyšíš ten randál od baráku? Každý večer.",
+      "Někdo tu zase něco pokazil. A nebyla to kočka.",
+      "Lidi na ulici. Hluk a nepořádek. Klasika.",
+      "Ten křik. Kdyby aspoň někdo přines konzervu."
+    ],
+    "musings": [
+      "Hezký večer. Skoro.",
+      "Dneska voní tráva jinak.",
+      "Vidíš toho ptáka? Já jo.",
+      "Kdybych uměl otevírat konzervy sám…",
+      "Ještě kousek a lehnu si.",
+      "Tuhle trávu si musím očmuchat.",
+      "Slunce zapadá. Načase jít domů.",
+      "Mohl bych běžet. Ale nebudu."
+    ],
+    "rain": [
+      "Fuj. Prší.",
+      "Já a voda. Odvěké nedorozumění.",
+      "Mokrý kožich. Nádhera.",
+      "Kdo tohle objednal?",
+      "Domů. Hned.",
+      "Kaluže všude. To si dělá srandu.",
+      "Kapka. Další. Nesnáším to."
+    ],
+    "eat": [
+      "Mlask. … Promiň.",
+      "Já… neudržel jsem se. Promiň.",
+      "Byla moc dobrá. Teda… promiň.",
+      "To se nemělo stát. Ale stálo to za to."
+    ]
+  },
+  "hedgehog": {
+    "lines": [
+      "Chtěl bych přejít tu silnici, ale nikdy to nevypadá bezpečně. Tak čekám.",
+      "Celou noc tu někdo dělal rámus. Prý slavili. A co já?",
+      "Ten postroj ti moc sluší. Kde se dneska takový shání?",
+      "Pod lavičkou bydlí slimák, co se mnou nemluví. Ale já vím, že poslouchá.",
+      "Kdysi tu byla louka. Teď je tu trávník. Není to totéž.",
+      "Prý mám bodliny. No a? Ty máš zase vodítko.",
+      "Viděl jsem dnes žížalu tak dlouhou, že se nevešla do vyprávění.",
+      "Ta popelnice v úterý hrozně bouchá. Úterky nemám rád.",
+      "Slyšel jsi to auto? Já se ani nehnul. Trénink.",
+      "Támhle běhali dva psi. Jeden hodný, druhý ukecaný.",
+      "Lidi si stěžují na hluk. To by měli slyšet ten svůj.",
+      "Máš pěkného pána. Nebo paní. Já špatně vidím.",
+      "Kámen, co tu ležel deset let, někdo odnesl. Bez rozloučení.",
+      "Kdybych byl o dvě bodliny statečnější, přešel bych."
+    ],
+    "alt": [
+      "…a jak jsem říkal, ta silnice.",
+      "Ty jsi ještě tady?",
+      "Pozdravuj doma.",
+      "Už jsem ti to vyprávěl? Asi jo."
+    ],
+    "wormInfoSoon": "Žížala! Ty jsi poklad. Za odměnu ti povím: koleje už drnčí — tramvaj přijede zprava po hlavní silnici.",
+    "wormInfoWindow": "Žížala! Ty jsi poklad. Jen tak mezi námi: někdo tě občas vyhlíží z okna domu vpravo nahoře.",
+    "wormInfoArrived": "Žížala! Díky moc. A víš, že u domu vpravo nahoře už někdo čeká? Zrovna vystoupil z tramvaje."
+  },
+  "dog": { "bark": "Haf!" },
+  "dest": { "arrive": "Tady jsem!" },
+  "passersby": [
+    "Ježiš, to je kočka? A to se jí chce takhle na vodítku? Naše kočka by úplně šílela.",
+    "Počkat… vy venčíte kočku? To jsem teda ještě neviděl.",
+    "To je nádhera! Kočička na procházce. Můžu ji pohladit? Radši ne, viďte.",
+    "Naše doma prospí celý den. A tahle se prochází jako pejsek!",
+    "Kočka na vodítku? Vy jste teda kabrňák. Nebo teda ona.",
+    "Já myslel, že vedete malýho psa. Ono kotě! No teda.",
+    "Vypadá spokojeně. Kdežto naše by mě podrápala za pouhý pomyšlení.",
+    "To by u nás doma neprošlo. Ta by vodítko sežrala a mě k tomu.",
+    "Hele, kočka! Na vodítku! Musím to vyfotit, to mi nikdo neuvěří."
+  ]
+}
+</script>
 
 <script>
 'use strict';
@@ -829,88 +954,23 @@ grain.width = grain.height = 128;
 let grainPattern = null;
 
 // ===================== DIALOGUE =====================
-const HEDGE_LINES = [
-  "Chtěl bych přejít tu silnici, ale nikdy to nevypadá bezpečně. Tak čekám.",
-  "Celou noc tu někdo dělal rámus. Prý slavili. A co já?",
-  "Ten postroj ti moc sluší. Kde se dneska takový shání?",
-  "Pod lavičkou bydlí slimák, co se mnou nemluví. Ale já vím, že poslouchá.",
-  "Kdysi tu byla louka. Teď je tu trávník. Není to totéž.",
-  "Prý mám bodliny. No a? Ty máš zase vodítko.",
-  "Viděl jsem dnes žížalu tak dlouhou, že se nevešla do vyprávění.",
-  "Ta popelnice v úterý hrozně bouchá. Úterky nemám rád.",
-  "Slyšel jsi to auto? Já se ani nehnul. Trénink.",
-  "Támhle běhali dva psi. Jeden hodný, druhý ukecaný.",
-  "Lidi si stěžují na hluk. To by měli slyšet ten svůj.",
-  "Máš pěkného pána. Nebo paní. Já špatně vidím.",
-  "Kámen, co tu ležel deset let, někdo odnesl. Bez rozloučení.",
-  "Kdybych byl o dvě bodliny statečnější, přešel bych."
-];
-const HEDGE_ALT = [
-  "…a jak jsem říkal, ta silnice.",
-  "Ty jsi ještě tady?",
-  "Pozdravuj doma.",
-  "Už jsem ti to vyprávěl? Asi jo."
-];
-// hedgehog reward lines for a delivered worm — genuinely useful info
-const WORM_INFO_SOON =
-  "Žížala! Ty jsi poklad. Za odměnu ti povím: koleje už drnčí — tramvaj přijede zprava po hlavní silnici.";
-const WORM_INFO_WINDOW =
-  "Žížala! Ty jsi poklad. Jen tak mezi námi: někdo tě občas vyhlíží z okna domu vpravo nahoře.";
-const WORM_INFO_ARRIVED =
-  "Žížala! Díky moc. A víš, že u domu vpravo nahoře už někdo čeká? Zrovna vystoupil z tramvaje.";
-
-// sheepish apologies after eating the worm himself
-const EAT_LINES = [
-  "Mlask. … Promiň.",
-  "Já… neudržel jsem se. Promiň.",
-  "Byla moc dobrá. Teda… promiň.",
-  "To se nemělo stát. Ale stálo to za to."
-];
-
-const CAT_LINES = [
-  "Ten ježek toho namluví.",
-  "Hm.",
-  "Tak jdeme dál.",
-  "Zajímavé. Asi.",
-  "Mrrr.",
-  "Ježci. Samá filozofie, žádné myši.",
-  "Tohle už jsem někde slyšel.",
-  "Hluboké. Skoro jako miska.",
-  "Mňau. Teda… souhlasím.",
-  "Kdyby radši mlčel, mohli jsme čmuchat.",
-  "Já bych to neřešil."
-];
-
-// the cat mutters to himself while walking
-const CAT_STREET_LINES = [
-  "Zase někdo řve na ulici. Lidi.",
-  "Támhleti dělají v noci bordel a ráno spí.",
-  "Řvou, běhají, nechají tu nepořádek. A já jsem prý divný.",
-  "Slyšíš ten randál od baráku? Každý večer.",
-  "Někdo tu zase něco pokazil. A nebyla to kočka.",
-  "Lidi na ulici. Hluk a nepořádek. Klasika.",
-  "Ten křik. Kdyby aspoň někdo přines konzervu."
-];
-const CAT_MUSINGS = [
-  "Hezký večer. Skoro.",
-  "Dneska voní tráva jinak.",
-  "Vidíš toho ptáka? Já jo.",
-  "Kdybych uměl otevírat konzervy sám…",
-  "Ještě kousek a lehnu si.",
-  "Tuhle trávu si musím očmuchat.",
-  "Slunce zapadá. Načase jít domů.",
-  "Mohl bych běžet. Ale nebudu."
-];
-// grumbling in the rain
-const CAT_RAIN_LINES = [
-  "Fuj. Prší.",
-  "Já a voda. Odvěké nedorozumění.",
-  "Mokrý kožich. Nádhera.",
-  "Kdo tohle objednal?",
-  "Domů. Hned.",
-  "Kaluže všude. To si dělá srandu.",
-  "Kapka. Další. Nesnáším to."
-];
+// all in-game text lives in the #game-texts JSON block (edit it there)
+const T = JSON.parse(document.getElementById('game-texts').textContent);
+const HEDGE_LINES = T.hedgehog.lines, HEDGE_ALT = T.hedgehog.alt;
+const WORM_INFO_SOON = T.hedgehog.wormInfoSoon,
+      WORM_INFO_WINDOW = T.hedgehog.wormInfoWindow,
+      WORM_INFO_ARRIVED = T.hedgehog.wormInfoArrived;
+const EAT_LINES = T.cat.eat, CAT_LINES = T.cat.lines, CAT_STREET_LINES = T.cat.street,
+      CAT_MUSINGS = T.cat.musings, CAT_RAIN_LINES = T.cat.rain;
+const PASSERBY = T.passersby;
+// apply the editable UI strings to the start / end screens
+document.querySelector('#startScreen h1').textContent = T.ui.title;
+document.querySelector('#startScreen .sub').innerHTML = T.ui.subtitle1 + '<br>' + T.ui.subtitle2;
+document.querySelector('#startScreen .hint').textContent = T.ui.hint;
+document.querySelector('#pickWoman .lbl').textContent = T.ui.pickWoman;
+document.querySelector('#pickMan .lbl').textContent = T.ui.pickMan;
+document.getElementById('endTitle').textContent = T.ui.endTitle;
+document.title = T.ui.title;
 
 // ===================== ENTITIES =====================
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1035,6 +1095,7 @@ const marks = [];      // {x, y, kind:'pee'|'poop'}
 const dirt = [];       // {x,y,vx,vy,t} specks flung while the cat buries them
 let catChatCooldown = 14 + Math.random() * 12;
 let shoutTimer = 30 + Math.random() * 50;   // occasional rowdy street noise
+let commenterTimer = 18 + Math.random() * 22;  // a passerby comes over to comment on the cat
 
 // weather: 0 clear · 1 light rain · 2 rain · 3 storm (may drift over the walk)
 function pickWeather(){ const r = Math.random(); return r < 0.55 ? 0 : r < 0.8 ? 1 : r < 0.93 ? 2 : 3; }
@@ -1255,7 +1316,7 @@ function update(dt){
     const d = Math.hypot(tx - dest.x, ty - dest.y);
     if (d < 4){
       dest.x = tx; dest.y = ty; dest.state = 'waiting'; dest.pose = 'walk0';
-      say(dest, 'Tady jsem!', 3);
+      say(dest, T.dest.arrive, 3);
     } else {
       dest.x += (tx - dest.x) / d * 90 * dt;
       dest.y += (ty - dest.y) / d * 90 * dt;
@@ -1306,6 +1367,29 @@ function update(dt){
 
   // ---- other people & their dogs ----
   for (const p of peds){
+    // passerby coming over to comment on the cat-on-a-leash
+    if (p.commentState === 'approach'){
+      const d = dist(p, player) || 1;
+      if (d > 80){
+        p.x += (player.x - p.x) / d * p.speed * 1.35 * dt;
+        p.y += (player.y - p.y) / d * p.speed * 1.35 * dt;
+        p.flip = (player.x - p.x) < 0; p.animT += dt;
+        p.pose = (Math.floor(p.animT / 0.24) % 2) ? 'walk1' : 'walk0';
+        collide(p);
+        if ((p.commentT += dt) > 9) p.commentState = null;   // gave up (blocked)
+      } else {
+        p.commentState = 'talk'; p.commentT = 0; p.pose = 'walk0';
+        p.flip = (player.x - p.x) < 0;
+        say(p, PASSERBY[Math.floor(Math.random() * PASSERBY.length)], 5.5);
+      }
+      continue;
+    }
+    if (p.commentState === 'talk'){
+      p.pose = 'walk0';
+      if ((p.commentT += dt) > 5) p.commentState = null;      // done, back to wandering
+      continue;
+    }
+
     const dg = p.dog;
     const dogNearCat = dg && gameState !== 'done' && dist(dg, cat) < 150;
     // the owner notices the fuss and, after a moment, hauls the dog off
@@ -1341,7 +1425,7 @@ function update(dt){
         dg.flip = (cat.x - dg.x) < 0;
         dg.barkT -= dt;
         if (dg.barkT <= 0 && gameState === 'play'){
-          say(dg, 'Haf!', 0.8); playBark(); dg.barkT = 0.7 + Math.random() * 0.7;
+          say(dg, T.dog.bark, 0.8); playBark(); dg.barkT = 0.7 + Math.random() * 0.7;
         }
       }
       let dtx, dty;
@@ -1463,6 +1547,19 @@ function update(dt){
     shoutTimer = 45 + Math.random() * 75;
   }
 
+  // ---- a passerby wanders over to marvel at the cat on a leash ----
+  commenterTimer -= dt;
+  if (commenterTimer <= 0){
+    if (gameState === 'play' && !peds.some(p => p.commentState)){
+      const cand = peds.filter(p => !p.dog && !p.commentState && dist(p, player) < 520);
+      if (cand.length){
+        const p = cand[Math.floor(Math.random() * cand.length)];
+        p.commentState = 'approach'; p.commentT = 0;
+      }
+    }
+    commenterTimer = 30 + Math.random() * 45;
+  }
+
   // ---- cat FSM ----
   catTalkCooldown -= dt;
   cat.stateT += dt;
@@ -1476,7 +1573,7 @@ function update(dt){
       if (cat.target) cat.target.paused = false;
       cat.script = null; cat.wormTarget = null;
       cat.state = 'scared'; cat.scaredOf = nd.dog; cat.stateT = 0;
-      say(cat, 'Fss!', 1.3); playHiss();
+      say(cat, T.cat.scared, 1.3); playHiss();
     }
   }
 
@@ -1538,7 +1635,7 @@ function update(dt){
       for (const h of hedgehogs){
         if (h.cooldown <= 0 && dist(cat, h) < 95){
           cat.state = 'approach'; cat.target = h; cat.stateT = 0;
-          say(cat, '!', 1.1); playMeow();
+          say(cat, T.cat.excited, 1.1); playMeow();
           break;
         }
       }
@@ -1553,7 +1650,7 @@ function update(dt){
         if (w.state === 'out' && dist(cat, w) < 110 &&
             Math.hypot(player.x - w.x, player.y - w.y) < LEASH_LEN - 10){
           cat.state = 'toWorm'; cat.wormTarget = w; cat.stateT = 0;
-          say(cat, '!', 1);
+          say(cat, T.cat.excited, 1);
           break;
         }
       }
@@ -1588,7 +1685,7 @@ function update(dt){
         cat.script = [
           { at: 0.8, fn(){ playMunch(); say(h, dest.state !== 'away' ? WORM_INFO_ARRIVED
               : arrivalMode === 'tram' ? WORM_INFO_SOON : WORM_INFO_WINDOW, 7); } },
-          { at: 6.2, fn(){ say(cat, 'Stejně se kroutila moc.', 2.2); } },
+          { at: 6.2, fn(){ say(cat, T.cat.wormComment, 2.2); } },
           { at: 8.6, fn(){
               if (cat.carriedWorm) cat.carriedWorm.state = 'gone';
               cat.carriedWorm = null;
@@ -1655,7 +1752,7 @@ function update(dt){
         cat.state = 'wander'; cat.stateT = 0;
         // sometimes the temptation wins before he finds a hedgehog
         cat.wormEatAt = Math.random() < 0.35 ? playT + 4 + Math.random() * 6 : null;
-        say(cat, 'Mám ji.', 1.4);
+        say(cat, T.cat.gotWorm, 1.4);
       }
     }
   }
@@ -1680,7 +1777,7 @@ function update(dt){
     if (cat.zOff < 3){
       cat.state = 'wander'; cat.stateT = 0;
       cat.treeCooldown = 14 + Math.random() * 12;
-      say(cat, 'Hop.', 1);
+      say(cat, T.cat.hop, 1);
     }
   }
   else if (cat.state === 'scared'){
@@ -1709,7 +1806,7 @@ function update(dt){
       if (cat.reliefKind === 'pee' || cat.reliefKind === 'both') marks.push({ x: sp.x, y: sp.y, kind: 'pee' });
       if (cat.reliefKind === 'poop' || cat.reliefKind === 'both') marks.push({ x: sp.x + 7, y: sp.y + 2, kind: 'poop' });
       if (marks.length > 24) marks.splice(0, marks.length - 24);
-      say(cat, cat.reliefKind === 'pee' ? 'Uf. Líp.' : 'Tak. Teď je to moje.', 2);
+      say(cat, cat.reliefKind === 'pee' ? T.cat.pee : T.cat.poop, 2);
       cat.state = 'bury'; cat.stateT = 0; cat.buryT = 0;
     }
   }
@@ -1738,7 +1835,7 @@ function update(dt){
       cat.state = 'petted'; cat.pose = 'lay'; cat.stateT = 0;
       catTarget = null; catSpeed = 0;
       dest.pose = 'pet';
-      say(cat, 'Prrrr.', 3); playPurr(3.5);
+      say(cat, T.cat.purr, 3); playPurr(3.5);
       setTimeout(showEnd, 2200);
     }
   }
@@ -1779,7 +1876,7 @@ function update(dt){
           if (cat.target){ cat.target.paused = false; cat.target.cooldown = 10; }
           cat.script = null;
           cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 5;
-          say(cat, 'No dobře, už jdu.', 1.6);
+          say(cat, T.cat.dragged, 1.6);
         }
         if (cat.sniffT > 0) cat.sniffT = -2;   // no sniff-sitting while towed
       }
@@ -1842,10 +1939,8 @@ function update(dt){
 
 function showEnd(){
   gameState = 'done';
-  const who = chosen === 'woman' ? 'On' : 'Ona';
   document.getElementById('endText').innerHTML =
-    who + ' se skloní a drbe kocoura za ušima. Kocour přede.<br><br>' +
-    'Došli jste. Ale nejhezčí byla stejně ta cesta —<br>i s těmi ježky.';
+    T.ui.endText.replace('{who}', T.ui.endWho[chosen] || 'On');
   document.getElementById('endScreen').classList.remove('hidden');
 }
 
@@ -2165,6 +2260,30 @@ function updateIntro(dt){
     introTimer = 1.1 + Math.random() * 2.3;                 // gap between glimpses
   }
 }
+function drawIntroDecor(){
+  // loose, abstract sketches of the game's world around the edges of the
+  // select screen (fixed seeds so they stay stable, no boiling)
+  if (!roughMain) roughMain = rough.canvas(cvs);
+  const rc = roughMain, gy = VH - 44;
+  [[74, gy], [VW-86, gy-6], [92, 96]].forEach((p, i) => {          // abstract trees
+    rc.line(p[0], p[1], p[0], p[1]-34, opts(700+i, null, null, {stroke:PAL.hairM, strokeWidth:5, roughness:2.7}));
+    rc.circle(p[0], p[1]-52, 50, opts(710+i, PAL.green, 'zigzag',
+      {hachureGap:10, fillWeight:2.6, strokeWidth:2, roughness:2.8, bowing:3, hachureAngle:(i*3%7-3)*24}));
+  });
+  [[168, gy+4], [VW-168, gy+2]].forEach((p, i) => {                // abstract lamps
+    rc.line(p[0], p[1], p[0], p[1]-66, opts(720+i, null, null, {strokeWidth:3.4, roughness:2.4}));
+    rc.circle(p[0], p[1]-72, 13, opts(722+i, PAL.winLit, 'solid', {roughness:1.6}));
+  });
+  [[VW*0.33, gy+16], [VW*0.67, gy+18]].forEach((p, i) => {         // abstract hedgehogs
+    const bx = p[0], by = p[1];
+    rc.polygon([[bx-18,by],[bx-13,by-14],[bx+2,by-18],[bx+18,by-9],[bx+20,by]],
+      opts(730+i, PAL.hedge, 'hachure', {hachureGap:3, fillWeight:2.6, strokeWidth:2, roughness:2}));
+    for (let k = 0; k < 6; k++)
+      rc.line(bx-13+k*6, by-9-(k%2)*3, bx-17+k*7, by-25, opts(740+i*9+k, null, null, {strokeWidth:1.8, roughness:1.6}));
+    rc.circle(bx+18, by-6, 2, opts(749+i, INK, 'solid'));
+  });
+}
+
 function drawIntro(){
   if (!introCat.active) return;
   const p = introCat.t / introCat.dur;
@@ -2183,7 +2302,7 @@ function render(now){
   const variant = Math.floor(now / BOIL_MS) % 2;
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, VW, VH);
-  if (gameState === 'start'){ drawIntro(); return; }
+  if (gameState === 'start'){ drawIntroDecor(); drawIntro(); return; }
 
   // world
   ctx.drawImage(worldLayers[variant],
@@ -2313,7 +2432,7 @@ function pick(kind){
   document.getElementById('startScreen').classList.add('hidden');
   gameState = 'play';
   initAudio();
-  say(cat, 'Mňau. Tak jdem.', 2.4);
+  say(cat, T.cat.start, 2.4);
   playMeow();
 }
 document.getElementById('pickWoman').addEventListener('click', () => pick('woman'));
