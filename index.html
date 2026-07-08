@@ -148,6 +148,11 @@ function drawWoman(rc, g, s, pose){
   } else if (pose === 'walk1'){
     rc.line(30, 96, 30, 118, opts(s+1, null, null, {strokeWidth:3}));
     rc.line(34, 96, 35, 118, opts(s+2, null, null, {strokeWidth:3}));
+  } else if (pose === 'sit'){
+    rc.line(27, 96, 22, 108, opts(s+1, null, null, {strokeWidth:3}));   // knees bent forward
+    rc.line(22, 108, 23, 120, opts(s+13, null, null, {strokeWidth:3}));
+    rc.line(39, 96, 44, 108, opts(s+2, null, null, {strokeWidth:3}));
+    rc.line(44, 108, 43, 120, opts(s+14, null, null, {strokeWidth:3}));
   } else {
     rc.line(26, 112, 44, 116, opts(s+1, null, null, {strokeWidth:3})); // folded legs
   }
@@ -188,6 +193,11 @@ function drawMan(rc, g, s, pose){
   } else if (pose === 'phone'){
     rc.line(29, 94, 27, 118, opts(s+1, null, null, {strokeWidth:4}));
     rc.line(35, 94, 37, 118, opts(s+2, null, null, {strokeWidth:4}));
+  } else if (pose === 'sit'){
+    rc.line(27, 94, 22, 108, opts(s+1, null, null, {strokeWidth:4}));   // knees bent forward
+    rc.line(22, 108, 23, 120, opts(s+13, null, null, {strokeWidth:4}));
+    rc.line(37, 94, 42, 108, opts(s+2, null, null, {strokeWidth:4}));
+    rc.line(42, 108, 41, 120, opts(s+14, null, null, {strokeWidth:4}));
   } else {
     rc.line(24, 112, 44, 115, opts(s+1, null, null, {strokeWidth:4}));
   }
@@ -458,11 +468,13 @@ function drawCarSprite(rc, g, s, col){
   rc.circle(74, 40, 15, opts(s+3, INK, 'solid', {roughness:1.4}));
 }
 
-function drawCatInWindow(rc, g, s){
+const WINCAT_COLS = ['#2b2b30', '#c8763c', '#8a8a86', '#d9cdb0', '#7a5a3c'];  // black, ginger, grey, cream, brown
+function drawCatInWindow(rc, g, s, col){
   // a cat sitting on the sill INSIDE an existing window (20x24, no own frame)
-  rc.ellipse(10, 17, 15, 13, opts(s+1, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.4}));
-  rc.polygon([[4,12],[5,3],[10,11]], opts(s+2, PAL.cat, 'solid'));
-  rc.polygon([[11,11],[16,3],[17,13]], opts(s+3, PAL.cat, 'solid'));
+  col = col || PAL.cat;
+  rc.ellipse(10, 17, 15, 13, opts(s+1, col, 'hachure', {hachureGap:2.2, fillWeight:2.4}));
+  rc.polygon([[4,12],[5,3],[10,11]], opts(s+2, col, 'solid'));
+  rc.polygon([[11,11],[16,3],[17,13]], opts(s+3, col, 'solid'));
   rc.circle(7, 16, 1.8, opts(s+4, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
   rc.circle(13, 16, 1.8, opts(s+5, '#9fce6a', 'solid', {stroke:'#9fce6a', roughness:.6}));
 }
@@ -571,11 +583,13 @@ const PED_PALS = [
 const SPR = {
   woman: { walk0: makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'walk0')),
            walk1: makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'walk1')),
-           pet:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'pet')) },
+           pet:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'pet')),
+           sit:   makeSprite(64,120,(r,g,s)=>drawWoman(r,g,s,'sit')) },
   man:   { walk0: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk0')),
            walk1: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'walk1')),
            pet:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'pet')),
-           phone: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'phone')) },
+           phone: makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'phone')),
+           sit:   makeSprite(64,120,(r,g,s)=>drawMan(r,g,s,'sit')) },
   ped:   PED_PALS.map(pal => ({
            walk0: makeSprite(64,120,(r,g,s)=>drawPed(r,g,s,'walk0',pal)),
            walk1: makeSprite(64,120,(r,g,s)=>drawPed(r,g,s,'walk1',pal)) })),
@@ -599,6 +613,7 @@ const SPR = {
   face:  { woman: makeSprite(20,24,(r,g,s)=>drawFaceInWindow(r,g,s,'woman')),
            man:   makeSprite(20,24,(r,g,s)=>drawFaceInWindow(r,g,s,'man')),
            cat:   makeSprite(20,24,(r,g,s)=>drawCatInWindow(r,g,s)) },
+  wincat: WINCAT_COLS.map(c => makeSprite(20,24,(r,g,s)=>drawCatInWindow(r,g,s,c))),
   mark:  { pee:  makeSprite(16,12,(r,g,s)=>drawPee(r,g,s)),
            poop: makeSprite(18,14,(r,g,s)=>drawPoop(r,g,s)) },
   worm:  { idle:  makeSprite(26,16,(r,g,s)=>drawWormSprite(r,g,s)) },
@@ -658,6 +673,8 @@ const GREENZONES = [
   [520, 1010, 500, 400],  // bottom-center (B4)
   [1500, 960, 480, 450],  // bottom-right (B5)
 ];
+// park & courtyard benches [x,y] (top-left of the 60x10 seat) — the player sits when idle beside one
+const BENCHES = [ [480,600],[720,510],[300,1000],[1560,320],[1700,1080] ];
 
 BUILDINGS.forEach(b => block(b.x, b.y, b.w, b.h));
 CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
@@ -774,8 +791,8 @@ function drawWorld(rc, g, s){
     rc.line(b.x-4, b.y, b.x+48, b.y-2, opts(s+95+i, null, null, {strokeWidth:3}));
   });
 
-  // benches in park
-  [[480,600],[720,510]].forEach((p, i) => {
+  // benches
+  BENCHES.forEach((p, i) => {
     rc.rectangle(p[0], p[1], 60, 10, opts(s+100+i, PAL.hairM, 'hachure', {hachureGap:3, strokeWidth:2}));
     rc.line(p[0]+6, p[1]+10, p[0]+6, p[1]+22, opts(s+105+i, null, null, {strokeWidth:2.6}));
     rc.line(p[0]+54, p[1]+10, p[0]+54, p[1]+22, opts(s+106+i, null, null, {strokeWidth:2.6}));
@@ -921,6 +938,12 @@ function randomParkPoint(){
     if (inPoly(x, y, PARK)) return { x, y };
   }
   return { x: 520, y: 520 };
+}
+function benchNear(p){
+  for (const b of BENCHES){
+    if (Math.hypot(p.x - (b[0] + 30), p.y - (b[1] + 8)) < 44) return b;
+  }
+  return null;
 }
 
 let chosen = null;        // 'woman' | 'man'
@@ -1172,10 +1195,17 @@ function update(dt){
     if (beat !== player.stepBeat){ player.stepBeat = beat; if (beat % 2 === 0) playStep(); }
     player.idleT = 0; player.special = null;
   } else if (gameState === 'play'){
-    // idle quirks: the boy checks his phone, the girl crouches to pet the cat
+    // idle quirks: sit on a nearby bench, else the boy checks his phone /
+    // the girl crouches to pet the cat
     player.moveStreak = 0;
     player.idleT += dt;
-    if (player.special){
+    const bench = benchNear(player);
+    if (player.special === 'sit'){
+      if (!bench) player.special = null;               // (shouldn't happen while seated)
+    } else if (bench && player.idleT > 1){
+      player.special = 'sit';                          // settle onto the seat after ~1s
+      player.x = bench[0] + 30; player.y = bench[1] + 34;
+    } else if (player.special){
       player.specialT -= dt;
       if (player.specialT <= 0){ player.special = null; player.idleT = 0; }
     } else if (player.idleT > 2 && Math.random() < dt * 0.8){
@@ -1349,7 +1379,10 @@ function update(dt){
       if (!winFolks.some(f => f.x === w[0] && f.y === w[1])){
         const r = Math.random();
         const type = r < 0.4 ? 'cat' : r < 0.7 ? 'woman' : 'man';
-        winFolks.push({ x: w[0], y: w[1], type, flip: Math.random() < 0.5,
+        const spr = type === 'cat'
+          ? SPR.wincat[Math.floor(Math.random() * SPR.wincat.length)]   // random cat colour
+          : SPR.face[type];
+        winFolks.push({ x: w[0], y: w[1], type, spr, flip: Math.random() < 0.5,
                         t: 0, dur: 5 + Math.random() * 10 });
       }
     }
@@ -2228,8 +2261,8 @@ function render(now){
     drawSprite(SPR.face[dest.kind], variant, { x: PEEK.x, y: PEEK.y }, SPR.face[dest.kind].h / 2);
 
   // ambient neighbours & cats framed in their windows
-  winFolks.forEach(f => drawSprite(SPR.face[f.type], variant,
-    { x: f.x, y: f.y, flip: f.flip }, SPR.face[f.type].h / 2));
+  winFolks.forEach(f => drawSprite(f.spr, variant,
+    { x: f.x, y: f.y, flip: f.flip }, f.spr.h / 2));
 
   drawNight();
   drawWeather();
