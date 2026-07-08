@@ -309,6 +309,26 @@ function drawCat(rc, g, s, pose){
     rc.line(50, 31, 53, 32, opts(s+10, null, null, {stroke:PAPER, strokeWidth:1.2, roughness:.8}));
     rc.line(57, 31, 60, 32, opts(s+11, null, null, {stroke:PAPER, strokeWidth:1.2, roughness:.8}));
     rc.line(44, 26, 46, 40, opts(s+12, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
+  } else if (pose === 'bury0' || pose === 'bury1'){
+    // low crouch, front paws scratching the ground (alternating = animated)
+    const sc = pose === 'bury1';
+    rc.line(20, 36, 16, 46, opts(s+1, null, null, {stroke:PAL.cat, strokeWidth:3}));   // back legs planted
+    rc.line(28, 36, 29, 46, opts(s+2, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    if (sc){
+      rc.line(44, 34, 40, 46, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(50, 34, 58, 44, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    } else {
+      rc.line(44, 34, 52, 46, opts(s+3, null, null, {stroke:PAL.cat, strokeWidth:3}));
+      rc.line(50, 34, 46, 44, opts(s+4, null, null, {stroke:PAL.cat, strokeWidth:3}));
+    }
+    rc.ellipse(33, 31, 40, 15, co);
+    rc.ellipse(53, 33, 16, 12, opts(s+5, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+    rc.polygon([[47,29],[50,22],[54,29]], opts(s+6, PAL.cat, 'solid'));
+    rc.polygon([[56,29],[61,23],[62,30]], opts(s+7, PAL.cat, 'solid'));
+    rc.curve([[16,30],[8,22],[11,12]], opts(s+8, null, null, {stroke:PAL.cat, strokeWidth:4}));
+    rc.line(50, 33, 53, 34, opts(s+10, null, null, {stroke:PAPER, strokeWidth:1.2, roughness:.8}));
+    rc.line(57, 33, 60, 34, opts(s+11, null, null, {stroke:PAPER, strokeWidth:1.2, roughness:.8}));
+    rc.line(44, 23, 46, 34, opts(s+12, null, null, {stroke:PAL.leash, strokeWidth:2.6}));
   } else {
     const step = pose === 'walk1';
     // legs
@@ -540,6 +560,8 @@ const SPR = {
            stalk1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'stalk1')),
            hunch0: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'hunch0')),
            hunch1: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'hunch1')),
+           bury0:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'bury0')),
+           bury1:  makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'bury1')),
            climb:  makeSprite(48,72,(r,g,s)=>drawCat(r,g,s,'climb')),
            scared: makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'scared')),
            lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
@@ -636,6 +658,14 @@ function drawWorld(rc, g, s){
     }
   }
 
+  // keep all grass out of the road bands — clip to the world minus the roads
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, WORLD_W, WORLD_H);
+  g.rect(-2, HROAD.y, WORLD_W + 4, HROAD.h);
+  g.rect(VROAD.x, -2, VROAD.w, WORLD_H + 4);
+  g.clip('evenodd');
+
   // boxy grass courtyards under the building clusters (fixed seeds, crooked edges)
   COURTYARDS.forEach((q, i) => rc.polygon(q,
     opts(9001+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.9, roughness:2.7, bowing:3})));
@@ -654,6 +684,8 @@ function drawWorld(rc, g, s){
     opts(9200+i, PAL.green, 'zigzag', {hachureGap:9, fillWeight:1.8, strokeWidth:1.9, roughness:2.6, bowing:2.4})));
   TREES.forEach((t, i) => rc.ellipse(t[0], t[1]+8, 92, 50,
     opts(9220+i, PAL.green, 'zigzag', {hachureGap:8, fillWeight:1.8, strokeWidth:1.8, bowing:2})));
+
+  g.restore();   // end grass clip
 
   // roads — fixed seeds (not derived from s) so they stay identical in both
   // boil variants; a large flickering hachure field was too distracting
@@ -965,6 +997,7 @@ const winFolks = [];   // {x, y, type:'woman'|'man'|'cat', flip, t, dur}
 let winTimer = 4 + Math.random() * 6;
 // little marks the cat leaves on the grass
 const marks = [];      // {x, y, kind:'pee'|'poop'}
+const dirt = [];       // {x,y,vx,vy,t} specks flung while the cat buries them
 let catChatCooldown = 14 + Math.random() * 12;
 
 // weather: 0 clear · 1 light rain · 2 rain · 3 storm (may drift over the walk)
@@ -1182,6 +1215,12 @@ function update(dt){
     w.t += dt;
     if (w.state === 'emerging' && w.t > 0.9){ w.state = 'out'; w.t = 0; }
     else if (w.state === 'out' && w.t > 30) w.state = 'gone';
+  }
+  // flung dirt specks (from the cat burying)
+  for (let i = dirt.length - 1; i >= 0; i--){
+    const d = dirt[i]; d.t += dt; d.vy += 320 * dt;
+    d.x += d.vx * dt; d.y += d.vy * dt;
+    if (d.t > 0.6) dirt.splice(i, 1);
   }
 
   // ---- ambient traffic (rare) ----
@@ -1561,6 +1600,23 @@ function update(dt){
       if (cat.reliefKind === 'poop' || cat.reliefKind === 'both') marks.push({ x: sp.x + 7, y: sp.y + 2, kind: 'poop' });
       if (marks.length > 24) marks.splice(0, marks.length - 24);
       say(cat, cat.reliefKind === 'pee' ? 'Uf. Líp.' : 'Tak. Teď je to moje.', 2);
+      cat.state = 'bury'; cat.stateT = 0; cat.buryT = 0;
+    }
+  }
+  else if (cat.state === 'bury'){
+    catSpeed = 0;
+    // turn to the spot and scratch, kicking a little dirt over it
+    cat.flip = cat.reliefSpot.x < cat.x;
+    cat.animT += dt;
+    cat.pose = (Math.floor(cat.animT / 0.12) % 2) ? 'bury1' : 'bury0';   // fast scratch
+    cat.buryT -= dt;
+    if (cat.buryT <= 0){
+      const dir = cat.flip ? -1 : 1;
+      dirt.push({ x: cat.x + dir * 16, y: cat.y - 4, vx: dir * (40 + Math.random() * 50),
+                  vy: -70 - Math.random() * 45, t: 0 });
+      cat.buryT = 0.11;
+    }
+    if (cat.stateT > 1.9){
       cat.state = 'wander'; cat.stateT = 0;
       cat.reliefCooldown = 45 + Math.random() * 40;
     }
@@ -1650,7 +1706,7 @@ function update(dt){
   if (gameState === 'play' && dest.state === 'waiting' && dist(player, dest) < 95 &&
       (cat.state === 'wander' || cat.state === 'approach' ||
        cat.state === 'dashTree' || cat.state === 'toWorm' || cat.state === 'scared' ||
-       cat.state === 'toRelief' || cat.state === 'relief')){
+       cat.state === 'toRelief' || cat.state === 'relief' || cat.state === 'bury')){
     gameState = 'ending';
     if (cat.target) cat.target.paused = false;
     cat.state = 'toDest'; cat.stateT = 0;
@@ -1975,6 +2031,11 @@ function render(now){
   // marks the cat left on the grass (flat decals, under everything)
   marks.forEach(m => drawSprite(SPR.mark[m.kind], variant,
     { x: m.x, y: m.y }, SPR.mark[m.kind].h * 0.5));
+  dirt.forEach(d => {
+    const sx = d.x - camX, sy = d.y - camY;
+    ctx.save(); ctx.globalAlpha = clamp(1 - d.t / 0.6, 0, 1) * 0.85; ctx.fillStyle = '#8a6b4a';
+    ctx.beginPath(); ctx.arc(sx, sy, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  });
   drawPuddles();
 
   // shadows
