@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zbýšovo — vizuální laboratoř</title>
+<script src="rough.min.js"></script>
+<style>
+  @font-face{
+    font-family:'Pangolin';
+    src:url('Pangolin-Regular.ttf') format('truetype');
+    font-display:swap;
+  }
+  :root{ --ink:#3a4066; --paper:#f4ead2; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Pangolin',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  header{padding:24px clamp(14px,4vw,40px) 8px}
+  h1{margin:0;font-size:clamp(26px,5vw,40px)}
+  .lede{margin:6px 0 0;font-size:clamp(14px,2.4vw,18px);opacity:.82;max-width:60ch;line-height:1.4}
+  .lede code{background:#fff5df;border:1.5px solid var(--ink);border-radius:6px 3px 7px 4px;
+    padding:0 6px;font-family:inherit;font-size:.92em}
+  section{padding:10px clamp(14px,4vw,40px) 26px}
+  h2{font-size:clamp(20px,3.4vw,27px);margin:22px 0 4px;
+    border-bottom:2.5px solid var(--ink);display:inline-block;padding-bottom:2px;
+    border-radius:0 0 10px 2px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px}
+  .tile{position:relative;background:#fdf6e6;border:2.5px solid var(--ink);
+    border-radius:18px 6px 20px 8px/8px 20px 6px 18px;padding:8px 8px 10px;
+    width:190px}
+  .tile canvas{display:block;width:180px;height:196px}
+  .code{position:absolute;top:-13px;left:-11px;background:var(--ink);color:var(--paper);
+    font-size:16px;font-weight:700;min-width:34px;height:34px;line-height:34px;text-align:center;
+    padding:0 8px;border-radius:12px 5px 13px 6px/6px 13px 5px 12px;
+    box-shadow:2px 2px 0 rgba(58,64,102,.25)}
+  .note{margin:6px 2px 0;font-size:13px;line-height:1.28;opacity:.85;min-height:2.4em}
+  .legend{font-size:13px;opacity:.7;margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Zbýšovo — vizuální laboratoř</h1>
+  <p class="lede">Sada variant světa od <b>věrných herních</b> po <b>hodně abstraktní</b> —
+    mění se tvar, <b>barvy</b>, <b>proporce/měřítko</b> i <b>textura výplně</b> (hachure,
+    cross-hatch, zigzag, dots, obrys…). Každá dlaždice má kód, např. <code>T3</code> nebo
+    <code>H5</code>. Napiš mi kódy, které se ti líbí, a já z nich udělám finální styl.</p>
+  <p class="legend">Čáry „vroucí“ jako ve hře (přepínání dvou seedů). T = stromy · L = lampy · H = ježci · C = kocour.</p>
+</header>
+<div id="app"></div>
+
+<script>
+'use strict';
+const INK = '#3a4066', PAPER = '#f4ead2';
+const PAL = {
+  pink:'#e7b7b0', green:'#8fae72', darkgreen:'#6f9457', road:'#9aa3b2',
+  brick:'#bd6b4f', skin:'#f0c9a0', hairW:'#d1592a', hairM:'#6b4a36',
+  cat:'#2b2b30', hedge:'#8a5a33', hedgeFace:'#c9a06b', leash:'#b0413e',
+  win:'#f2e2b0', winLit:'#f0c25e'
+};
+const SS = 2, CW = 180, CH = 196;
+
+// same opts() helper as the game
+function opts(seed, fill, style, extra){
+  const o = { seed, stroke:INK, strokeWidth:2.2, roughness:2.0, bowing:2,
+    fillWeight:2, hachureGap:6, disableMultiStroke:false };
+  if (fill){
+    o.fill = fill; o.fillStyle = style || 'hachure';
+    if (o.fillStyle !== 'solid') o.hachureAngle = ((seed % 9) - 4) * 21;
+  }
+  if (extra) Object.assign(o, extra);
+  return o;
+}
+function scaled(g, tx, ty, k, fn){ g.save(); g.translate(tx, ty); g.scale(k, k); fn(); g.restore(); }
+
+/* ============ GAME-FAITHFUL DRAW FNS (copied from index.html) ============ */
+function gameTree(rc, g, s, kind){
+  if (kind === 1){
+    rc.line(26,112,26,52, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:5,bowing:3}));
+    rc.ellipse(26,62,30,46, opts(s+1,PAL.darkgreen,'cross-hatch',{hachureGap:5,fillWeight:1.8,bowing:3}));
+    rc.ellipse(26,32,24,42, opts(s+2,PAL.green,'hachure',{hachureGap:4,fillWeight:1.8}));
+    rc.ellipse(26,12,16,20, opts(s+3,PAL.green,'hachure',{hachureGap:3.4,fillWeight:1.8}));
+  } else if (kind === 2){
+    rc.line(32,80,32,58, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:7,bowing:3}));
+    rc.circle(16,52,28, opts(s+2,PAL.darkgreen,'hachure',{hachureGap:4,fillWeight:1.8}));
+    rc.circle(48,50,30, opts(s+3,PAL.darkgreen,'hachure',{hachureGap:4,fillWeight:1.8}));
+    rc.circle(32,42,46, opts(s+1,PAL.green,'cross-hatch',{hachureGap:5,fillWeight:1.8,bowing:3}));
+    rc.circle(22,38,3, opts(s+4,PAL.pink,'solid',{stroke:PAL.pink,roughness:.6}));
+    rc.circle(40,48,3, opts(s+5,PAL.pink,'solid',{stroke:PAL.pink,roughness:.6}));
+    rc.circle(34,28,3, opts(s+6,PAL.pink,'solid',{stroke:PAL.pink,roughness:.6}));
+  } else {
+    rc.line(30,96,30,62, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:6,bowing:3}));
+    rc.circle(30,40,52, opts(s+1,PAL.darkgreen,'cross-hatch',{hachureGap:5,fillWeight:1.8,bowing:3}));
+    rc.circle(14,52,26, opts(s+2,PAL.green,'hachure',{hachureGap:4,fillWeight:1.8}));
+    rc.circle(46,50,28, opts(s+3,PAL.green,'hachure',{hachureGap:4,fillWeight:1.8}));
+  }
+}
+function gameHedgehog(rc, g, s){
+  rc.polygon([[8,38],[10,22],[22,13],[36,16],[44,28],[44,38]],
+    opts(s, PAL.hedge, 'hachure', {hachureGap:2.4, fillWeight:2.8, strokeWidth:2}));
+  const SPIKES = [[9,32,1,28],[11,26,3,19],[13,19,6,10],[19,15,15,5],
+    [26,13,25,3],[32,15,35,5],[38,19,43,11],[42,25,50,19]];
+  SPIKES.forEach((p,i)=>rc.line(p[0],p[1],p[2],p[3], opts(s+10+i,null,null,{strokeWidth:2.2,roughness:1.4})));
+  rc.polygon([[44,28],[56,35],[44,39]], opts(s+1, PAL.hedgeFace, 'solid', {roughness:1.6}));
+  rc.circle(56,35,3.4, opts(s+2, INK, 'solid', {roughness:.8}));
+  rc.circle(47,31,2, opts(s+3, INK, 'solid', {roughness:.8}));
+  rc.line(16,38,16,45, opts(s+4,null,null,{strokeWidth:3}));
+  rc.line(36,38,36,45, opts(s+5,null,null,{strokeWidth:3}));
+}
+function gameCatLoaf(rc, g, s){
+  const co = opts(s, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6, strokeWidth:2});
+  rc.ellipse(34,34,52,20, co);
+  rc.ellipse(56,28,20,17, opts(s+1, PAL.cat, 'hachure', {hachureGap:2.2, fillWeight:2.6}));
+  rc.polygon([[50,21],[53,12],[57,20]], opts(s+2, PAL.cat, 'solid'));
+  rc.polygon([[60,20],[65,12],[66,21]], opts(s+3, PAL.cat, 'solid'));
+  rc.curve([[12,36],[4,30],[10,22],[18,26]], opts(s+4,null,null,{stroke:PAL.cat,strokeWidth:4}));
+  rc.line(52,27,55,28, opts(s+5,null,null,{stroke:PAPER,strokeWidth:1.4,roughness:.8}));
+  rc.line(59,27,62,28, opts(s+6,null,null,{stroke:PAPER,strokeWidth:1.4,roughness:.8}));
+  rc.line(40,26,42,42, opts(s+7,null,null,{stroke:PAL.leash,strokeWidth:2.6}));
+  rc.line(31,29,40,26, opts(s+8,null,null,{stroke:PAL.leash,strokeWidth:2.2}));
+}
+
+/* ================= SUBJECTS & VARIANTS ================= */
+const SUBJECTS = [
+{ title:'Stromy (T)', variants:[
+  { code:'T1', note:'Herní — kulatý strom (cross-hatch + hachure).',
+    draw:(rc,g,s)=>scaled(g,39,4,1.7,()=>gameTree(rc,g,s,0)) },
+  { code:'T2', note:'Herní — štíhlý topol.',
+    draw:(rc,g,s)=>scaled(g,54,11,1.4,()=>gameTree(rc,g,s,1)) },
+  { code:'T3', note:'Herní — hustý keřovitý s bobulemi.',
+    draw:(rc,g,s)=>scaled(g,36,30,1.7,()=>gameTree(rc,g,s,2)) },
+  { code:'T4', note:'Jako na úvodní obrazovce — jedna koule, zigzag výplň.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,120, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:5,roughness:2.7}));
+      rc.circle(90,94,104, opts(s+1,PAL.green,'zigzag',{hachureGap:10,fillWeight:2.6,strokeWidth:2,roughness:2.8,bowing:3}));
+    } },
+  { code:'T5', note:'Abstraktnější — dots (tečkovaná) textura.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,118, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:6}));
+      rc.circle(90,90,114, opts(s+1,PAL.green,'dots',{hachureGap:7,fillWeight:3.4,strokeWidth:2.6,roughness:2.2}));
+    } },
+  { code:'T6', note:'Hodně abstraktní — geometrický trojúhelník.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,134, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:7,bowing:2}));
+      rc.polygon([[90,22],[148,134],[32,134]], opts(s+1,PAL.darkgreen,'hachure',{hachureGap:6,fillWeight:2,strokeWidth:2.4,roughness:2.2}));
+    } },
+  { code:'T7', note:'Minimalistický — jen obrys + pár čmáranic, bez výplně.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,110, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:5,roughness:2.4,bowing:3}));
+      rc.circle(90,84,102, opts(s+1,null,null,{stroke:PAL.darkgreen,strokeWidth:3,roughness:3,bowing:4}));
+      rc.line(60,84,116,68, opts(s+2,null,null,{stroke:PAL.green,strokeWidth:2,roughness:3}));
+      rc.line(66,102,120,92, opts(s+3,null,null,{stroke:PAL.green,strokeWidth:2,roughness:3}));
+    } },
+  { code:'T8', note:'Barevná varianta — podzim, velká koruna / krátký kmen, cross-hatch.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,142, opts(s,null,null,{stroke:PAL.hairM,strokeWidth:8,bowing:2}));
+      rc.circle(90,82,126, opts(s+1,'#d98a3a','cross-hatch',{hachureGap:5,fillWeight:1.9,bowing:3}));
+      rc.circle(64,66,36, opts(s+2,'#c9542f','hachure',{hachureGap:4,fillWeight:1.9}));
+      rc.circle(118,98,32, opts(s+3,'#e0b24a','hachure',{hachureGap:4,fillWeight:1.9}));
+    } },
+]},
+{ title:'Lampy (L)', variants:[
+  { code:'L1', note:'Detailní pouliční lampa — stožár, stínítko, záře.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,60, opts(s,null,null,{strokeWidth:4,roughness:1.6}));
+      rc.circle(90,50,34, opts(s+1,PAL.winLit,'solid',{roughness:1.4}));
+      rc.polygon([[78,62],[102,62],[96,38],[84,38]], opts(s+2,null,null,{strokeWidth:2.2,roughness:1.6}));
+      rc.line(80,168,100,168, opts(s+3,null,null,{strokeWidth:4}));
+    } },
+  { code:'L2', note:'Jako na úvodní obrazovce — stožár + koule světla.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,80, opts(s,null,null,{strokeWidth:3.4,roughness:2.4}));
+      rc.circle(90,72,28, opts(s+1,PAL.winLit,'solid',{roughness:1.6}));
+    } },
+  { code:'L3', note:'Důraz na záři — tečkované halo kolem světla.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,86, opts(s,null,null,{strokeWidth:3.2,roughness:2}));
+      rc.circle(90,76,66, opts(s+1,PAL.winLit,'dots',{hachureGap:6,fillWeight:2.6,strokeWidth:1.6,roughness:2}));
+      rc.circle(90,76,24, opts(s+2,PAL.winLit,'solid',{roughness:1.4}));
+    } },
+  { code:'L4', note:'Geometrická — trojúhelníkové stínítko, hachure.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,74, opts(s,null,null,{strokeWidth:3.6,roughness:1.8}));
+      rc.polygon([[60,74],[120,74],[90,40]], opts(s+1,'#f0c25e','hachure',{hachureGap:4,fillWeight:2,strokeWidth:2.2}));
+      rc.circle(90,80,10, opts(s+2,PAL.winLit,'solid'));
+    } },
+  { code:'L5', note:'Hodně minimalistická — stvol + tečka, hodně roztřesené.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,88, opts(s,null,null,{strokeWidth:4,roughness:3.2,bowing:4}));
+      rc.circle(90,82,18, opts(s+1,PAL.winLit,'solid',{roughness:2}));
+    } },
+  { code:'L6', note:'Barevná varianta — chladné světlo, zigzag halo.',
+    draw:(rc,g,s)=>{
+      rc.line(90,168,90,66, opts(s,null,null,{strokeWidth:3,roughness:2}));
+      rc.circle(90,58,58, opts(s+1,'#8fd0e0','zigzag',{hachureGap:8,fillWeight:2.4,strokeWidth:1.8,roughness:2.4}));
+      rc.circle(90,58,24, opts(s+2,'#bfe3d9','solid',{roughness:1.4}));
+    } },
+]},
+{ title:'Ježci (H)', variants:[
+  { code:'H1', note:'Herní ježek — kopule, bodliny, čumáček.',
+    draw:(rc,g,s)=>scaled(g,28,51,2.2,()=>gameHedgehog(rc,g,s)) },
+  { code:'H2', note:'Jako na úvodní obrazovce — volnější, méně bodlin.',
+    draw:(rc,g,s)=>{
+      rc.polygon([[54,140],[64,112],[94,104],[128,122],[132,140]],
+        opts(s,PAL.hedge,'hachure',{hachureGap:3.4,fillWeight:2.6,strokeWidth:2,roughness:2}));
+      for(let k=0;k<8;k++){ const x=60+k*9;
+        rc.line(x,118-(k%2)*6,x-8,84, opts(s+10+k,null,null,{strokeWidth:2,roughness:1.6})); }
+      rc.circle(124,132,4, opts(s+2,INK,'solid'));
+    } },
+  { code:'H3', note:'Bodliny jako textura — zigzag výplň místo čar.',
+    draw:(rc,g,s)=>{
+      rc.ellipse(88,124,120,62, opts(s,PAL.hedge,'zigzag',{hachureGap:6,fillWeight:2.6,strokeWidth:2.2,roughness:2}));
+      rc.polygon([[142,118],[164,128],[142,136]], opts(s+1,PAL.hedgeFace,'solid'));
+      rc.circle(150,126,4, opts(s+2,INK,'solid'));
+      for(let k=0;k<5;k++) rc.line(60+k*14,98,58+k*14,84, opts(s+8+k,null,null,{strokeWidth:1.8,roughness:1.6}));
+    } },
+  { code:'H4', note:'Geometrická — půlkruh + vějíř rovných bodlin.',
+    draw:(rc,g,s)=>{
+      rc.arc(88,140,132,132,Math.PI,Math.PI*2,true, opts(s,PAL.hedge,'hachure',{hachureGap:5,fillWeight:2,strokeWidth:2.4,roughness:1.8}));
+      for(let k=0;k<12;k++){ const a=Math.PI+Math.PI*(k+0.5)/12, r1=66,r2=96;
+        rc.line(88+Math.cos(a)*r1,140+Math.sin(a)*r1, 88+Math.cos(a)*r2,140+Math.sin(a)*r2,
+          opts(s+10+k,null,null,{strokeWidth:2,roughness:1.3})); }
+      rc.polygon([[150,132],[172,140],[150,146]], opts(s+2,PAL.hedgeFace,'solid'));
+      rc.circle(156,136,4, opts(s+3,INK,'solid'));
+    } },
+  { code:'H5', note:'Hodně minimalistický — hrb obrysem, pár teček-bodlin.',
+    draw:(rc,g,s)=>{
+      rc.curve([[38,142],[68,92],[112,92],[150,142]], opts(s,null,null,{stroke:INK,strokeWidth:3,roughness:2.4}));
+      for(let k=0;k<6;k++) rc.line(58+k*15,104,54+k*15,86, opts(s+10+k,null,null,{strokeWidth:2,roughness:1.8}));
+      rc.polygon([[150,132],[168,138],[150,144]], opts(s+2,null,null,{strokeWidth:2}));
+      rc.circle(140,130,3.5, opts(s+3,INK,'solid'));
+    } },
+  { code:'H6', note:'Barva + textura — šedý, cross-hatch, větší.',
+    draw:(rc,g,s)=>{
+      rc.polygon([[40,146],[52,110],[92,98],[136,120],[142,146]],
+        opts(s,'#8f8b86','cross-hatch',{hachureGap:4,fillWeight:2,strokeWidth:2.2,roughness:2}));
+      for(let k=0;k<9;k++){ const x=54+k*10;
+        rc.line(x,118-(k%2)*6,x-8,80, opts(s+10+k,null,null,{strokeWidth:2.2,roughness:1.4})); }
+      rc.polygon([[142,118],[168,128],[142,136]], opts(s+2,'#d8cdbe','solid'));
+      rc.circle(152,126,4.4, opts(s+3,INK,'solid'));
+    } },
+]},
+{ title:'Kocour Zbyšek (C)', variants:[
+  { code:'C1', note:'Herní — bochánek (loaf), hachure, postroj.',
+    draw:(rc,g,s)=>scaled(g,13,53,2.2,()=>gameCatLoaf(rc,g,s)) },
+  { code:'C2', note:'Zjednodušený — plná (solid) výplň, kulatější.',
+    draw:(rc,g,s)=>{
+      rc.ellipse(80,132,124,54, opts(s,PAL.cat,'solid',{roughness:1.6}));
+      rc.circle(140,112,46, opts(s+1,PAL.cat,'solid',{roughness:1.4}));
+      rc.polygon([[122,96],[126,74],[140,92]], opts(s+2,PAL.cat,'solid'));
+      rc.polygon([[146,90],[160,72],[162,96]], opts(s+3,PAL.cat,'solid'));
+      rc.curve([[22,134],[6,120],[16,100],[30,108]], opts(s+4,null,null,{stroke:PAL.cat,strokeWidth:5}));
+      rc.circle(132,110,5, opts(s+5,'#9fce6a','solid',{stroke:'#9fce6a',roughness:.6}));
+      rc.circle(150,110,5, opts(s+6,'#9fce6a','solid',{stroke:'#9fce6a',roughness:.6}));
+    } },
+  { code:'C3', note:'Abstraktní silueta — sedící, tělo trojúhelník + hlava koule.',
+    draw:(rc,g,s)=>{
+      rc.polygon([[58,152],[122,152],[104,84],[76,84]], opts(s,PAL.cat,'hachure',{hachureGap:3,fillWeight:2.6,strokeWidth:2}));
+      rc.circle(90,72,48, opts(s+1,PAL.cat,'hachure',{hachureGap:3,fillWeight:2.6}));
+      rc.polygon([[68,56],[72,36],[86,52]], opts(s+2,PAL.cat,'solid'));
+      rc.polygon([[94,52],[108,36],[112,56]], opts(s+3,PAL.cat,'solid'));
+      rc.curve([[122,152],[148,140],[144,108],[124,116]], opts(s+4,null,null,{stroke:PAL.cat,strokeWidth:5}));
+      rc.circle(80,70,5, opts(s+5,'#9fce6a','solid',{stroke:'#9fce6a',roughness:.6}));
+      rc.circle(100,70,5, opts(s+6,'#9fce6a','solid',{stroke:'#9fce6a',roughness:.6}));
+    } },
+  { code:'C4', note:'Hodně minimalistický — jen obrys bochánku, uši, ocásek.',
+    draw:(rc,g,s)=>{
+      rc.ellipse(94,132,132,60, opts(s,null,null,{stroke:PAL.cat,strokeWidth:3,roughness:2.6,bowing:3}));
+      rc.polygon([[118,104],[126,86],[138,104]], opts(s+1,null,null,{stroke:PAL.cat,strokeWidth:2.6}));
+      rc.polygon([[140,104],[152,86],[158,104]], opts(s+2,null,null,{stroke:PAL.cat,strokeWidth:2.6}));
+      rc.curve([[30,134],[14,120],[24,102],[38,110]], opts(s+3,null,null,{stroke:PAL.cat,strokeWidth:4}));
+      rc.circle(128,120,3.4, opts(s+4,INK,'solid'));
+      rc.circle(146,120,3.4, opts(s+5,INK,'solid'));
+    } },
+  { code:'C5', note:'Barevná varianta — zrzavý, s pruhy.',
+    draw:(rc,g,s)=>{
+      rc.ellipse(78,132,124,54, opts(s,'#d98a4a','hachure',{hachureGap:2.6,fillWeight:2.6,strokeWidth:2}));
+      rc.circle(138,112,46, opts(s+1,'#d98a4a','hachure',{hachureGap:2.6,fillWeight:2.6}));
+      rc.polygon([[120,96],[124,74],[138,92]], opts(s+2,'#d98a4a','solid'));
+      rc.polygon([[144,90],[158,72],[160,96]], opts(s+3,'#d98a4a','solid'));
+      rc.curve([[20,134],[6,120],[16,102],[30,110]], opts(s+4,null,null,{stroke:'#d98a4a',strokeWidth:5}));
+      for(let k=0;k<4;k++) rc.line(50+k*22,110,54+k*22,132, opts(s+8+k,null,null,{stroke:'#b5652a',strokeWidth:3,roughness:1.4}));
+      rc.circle(130,110,5, opts(s+6,'#4b8f3a','solid',{stroke:'#4b8f3a',roughness:.6}));
+      rc.circle(148,110,5, opts(s+7,'#4b8f3a','solid',{stroke:'#4b8f3a',roughness:.6}));
+    } },
+  { code:'C6', note:'Textura — šedý mourek, cross-hatch.',
+    draw:(rc,g,s)=>{
+      rc.ellipse(80,132,124,54, opts(s,'#9a9aa2','cross-hatch',{hachureGap:4,fillWeight:1.8,strokeWidth:2}));
+      rc.circle(140,112,46, opts(s+1,'#9a9aa2','cross-hatch',{hachureGap:4,fillWeight:1.8}));
+      rc.polygon([[122,96],[126,74],[140,92]], opts(s+2,'#9a9aa2','solid'));
+      rc.polygon([[146,90],[160,72],[162,96]], opts(s+3,'#9a9aa2','solid'));
+      rc.curve([[22,134],[6,120],[16,102],[30,110]], opts(s+4,null,null,{stroke:'#6d6d76',strokeWidth:5}));
+      rc.circle(132,110,5, opts(s+5,'#e7c04a','solid',{stroke:'#e7c04a',roughness:.6}));
+      rc.circle(150,110,5, opts(s+6,'#e7c04a','solid',{stroke:'#e7c04a',roughness:.6}));
+    } },
+]},
+];
+
+/* ================= RENDER ================= */
+const app = document.getElementById('app');
+const tiles = [];
+let seedCounter = 0;
+SUBJECTS.forEach(sub => {
+  const sec = document.createElement('section');
+  const h2 = document.createElement('h2'); h2.textContent = sub.title; sec.appendChild(h2);
+  const row = document.createElement('div'); row.className = 'row';
+  sub.variants.forEach(v => {
+    const tile = document.createElement('div'); tile.className = 'tile';
+    const badge = document.createElement('span'); badge.className = 'code'; badge.textContent = v.code;
+    const cvs = document.createElement('canvas'); cvs.width = CW*SS; cvs.height = CH*SS;
+    const note = document.createElement('p'); note.className = 'note'; note.textContent = v.note;
+    tile.appendChild(badge); tile.appendChild(cvs); tile.appendChild(note);
+    row.appendChild(tile);
+    const g = cvs.getContext('2d'); g.scale(SS, SS);
+    const rc = rough.canvas(cvs);
+    tiles.push({ g, rc, draw:v.draw, base: 100 + (seedCounter++) * 13 });
+  });
+  sec.appendChild(row); app.appendChild(sec);
+});
+
+let flip = false;
+function boil(){
+  flip = !flip;
+  tiles.forEach(t => {
+    t.g.clearRect(0, 0, CW, CH);
+    t.draw(t.rc, t.g, t.base + (flip ? 37 : 0));
+  });
+}
+boil();
+setInterval(boil, 280);
+</script>
+</body>
+</html>

@@ -16,6 +16,8 @@ python3 -m http.server 8000
 
 or just open `index.html` in a browser. Works on desktop (WASD / arrows) and mobile (floating touch joystick via pointer events).
 
+`visuals.html` is a standalone art sandbox (not part of the game): a labelled gallery of Rough.js style variants for the world objects (trees `T#`, lamps `L#`, hedgehogs `H#`, cat `C#`) ranging from the current game style to very abstract, exploring colour/scale/texture-fill (`fillStyle`) options. It copies `INK`/`PAPER`/`PAL`/`opts()` and the faithful `draw*` shapes from `index.html`; keep it in sync if those change. Used to pick a direction, then fold the chosen look back into `index.html`.
+
 ## Architecture
 
 Everything lives in the single `<script>` block of `index.html`, organized into banner-commented sections in this order:
