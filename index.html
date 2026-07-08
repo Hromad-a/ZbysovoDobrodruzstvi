@@ -1208,7 +1208,7 @@ function updateCarAudio(){
     if (!mc.audio && SFX.carloop) carAudioStart(mc);
     if (mc.audio){
       const d = Math.hypot(mc.x - player.x, mc.y - player.y);
-      mc.audio.g.gain.setTargetAtTime(clamp(1 - d / 750, 0, 1) * 0.33, AC.currentTime, 0.15);
+      mc.audio.g.gain.setTargetAtTime(clamp(1 - d / 750, 0, 1) * 0.11, AC.currentTime, 0.15);
       if (mc.audio.pan) mc.audio.pan.pan.setTargetAtTime(clamp((mc.x - player.x) / 500, -1, 1), AC.currentTime, 0.15);
     }
   }
