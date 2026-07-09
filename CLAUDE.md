@@ -16,7 +16,7 @@ python3 -m http.server 8000
 
 or just open `index.html` in a browser. Works on desktop (WASD / arrows) and mobile (floating touch joystick via pointer events).
 
-`visuals.html` is a standalone art sandbox (not part of the game): a labelled gallery of Rough.js style variants for the world objects (trees `T#`, lamps `L#`, hedgehogs `H#`, cat `C#`) ranging from the current game style to very abstract, exploring colour/scale/texture-fill (`fillStyle`) options. It copies `INK`/`PAPER`/`PAL`/`opts()` and the faithful `draw*` shapes from `index.html`; keep it in sync if those change. Used to pick a direction, then fold the chosen look back into `index.html`.
+`visuals.html` is a standalone art sandbox (not part of the game): a labelled gallery of **Die Brücke / German-Expressionist** style explorations for the world objects (trees `T#`, lamps `L#`, hedgehogs `H#`, cat `C#`), used to pick an art direction and then fold the chosen look back into `index.html`. Each subject has a grey `REF` tile (the current game sprite, via the copied `gameTree`/`gameHedgehog`/`gameCat`/`gameLamp` fns) plus five expressionist treatments: `1` woodcut (jagged `jag()` silhouette + carved `wood()` outline + paper `gouges()`), `2` vibrating multi-pass (`vibrate()` redraws the shape N× with drifting seeds), `3` violently clashing colour planes (`clash()` overlays two non-naturalistic hachure fills), `4` fuzzy smudge (`fuzz()` = many low-alpha blobs), `5` distorted proportions + acid `CLASH` palette. It copies `INK`/`PAPER`/`PAL`/`opts()` from `index.html`; keep those in sync if they change.
 
 ## Architecture
 
