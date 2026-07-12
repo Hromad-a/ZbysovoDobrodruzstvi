@@ -180,6 +180,33 @@
     "wormInfoArrived": "Žížala! Díky moc. A víš, že u domu vpravo nahoře už někdo čeká? Zrovna vystoupil z tramvaje."
   },
   "dog": { "bark": "Haf!" },
+  "pigeon": {
+    "coo": "Vrkú.",
+    "startle": "Vrkúúú!",
+    "flight": [
+      "Mňáá! Pusť mě, ty opeřenej taxíku!",
+      "Já jsem kocour, ne zavazadlo!",
+      "Doluuu! Okamžitě doluuu!",
+      "Mňáááu! Já se bojím výšek!"
+    ],
+    "landed": [
+      "Uf. Lítání nic pro mě. Já jsem spíš na chození.",
+      "O tomhle doma nikomu ani mňau.",
+      "Fuj. Holubi. Nedá se jim věřit.",
+      "Hm. Aspoň jsme si zkrátili cestu."
+    ],
+    "playerShout": "Zbýšóóó! Počkej na mě!"
+  },
+  "bug": {
+    "spotted": "!",
+    "gone": [
+      "Kam to zmizelo?",
+      "Bylo to tu. A najednou nic.",
+      "Hmyz. Nedá se mu věřit.",
+      "Příště tě mám.",
+      "Skoro jsem to měl. Skoro."
+    ]
+  },
   "dest": { "arrive": "Tady jsem!" },
   "player": { "bottle": "To je jen dvoulitrovej Brankář Zbýšo, to nic." },
   "passersby": [
@@ -310,10 +337,14 @@ function drawWoman(rc, g, s, pose){
   rc.line(32, 52+oy, 33, 40+oy, opts(s+6, null, null, {strokeWidth:4}));
   // elongated tilted head
   rc.ellipse(33, 26+oy, 20, 32, opts(s+7, PAL.skin, 'solid', {roughness:1.6, bowing:2.5}));
-  // hair — orange arc
+  // hair — orange mikádo bob: crown cap, blunt fringe, straight side curtains to the jaw
   rc.arc(33, 22+oy, 26, 30, Math.PI*0.95, Math.PI*2.08, true,
     opts(s+8, PAL.hairW, 'hachure', {hachureGap:3, fillWeight:2.4}));
-  rc.line(22, 26+oy, 20, 46+oy, opts(s+9, null, null, {stroke:PAL.hairW, strokeWidth:4}));
+  rc.polygon([[21,20+oy],[19,40+oy],[26,40+oy],[25,22+oy]],
+    opts(s+9, PAL.hairW, 'hachure', {hachureGap:2.6, fillWeight:2.2, strokeWidth:1.8}));
+  rc.polygon([[45,20+oy],[47,40+oy],[40,40+oy],[41,22+oy]],
+    opts(s+15, PAL.hairW, 'hachure', {hachureGap:2.6, fillWeight:2.2, strokeWidth:1.8}));
+  rc.line(25, 15+oy, 41, 15+oy, opts(s+16, null, null, {stroke:PAL.hairW, strokeWidth:5, roughness:1.6}));
   // empty Modigliani eyes + tiny mouth
   rc.line(28, 24+oy, 31, 24+oy, opts(s+10, null, null, {strokeWidth:1.6, roughness:1}));
   rc.line(36, 24+oy, 39, 24+oy, opts(s+11, null, null, {strokeWidth:1.6, roughness:1}));
@@ -373,6 +404,10 @@ function drawMan(rc, g, s, pose){
   rc.line(27, 23+oy, 30, 23+oy, opts(s+10, null, null, {strokeWidth:1.6, roughness:1}));
   rc.line(35, 23+oy, 38, 23+oy, opts(s+11, null, null, {strokeWidth:1.6, roughness:1}));
   rc.line(30, 33+oy, 34, 33+oy, opts(s+12, null, null, {strokeWidth:1.4, roughness:1}));
+  // round wire glasses over the eyes (single light stroke so they stay airy)
+  rc.circle(28.5, 23+oy, 8.5, opts(s+15, null, null, {strokeWidth:1.1, roughness:.7, disableMultiStroke:true}));
+  rc.circle(36.5, 23+oy, 8.5, opts(s+16, null, null, {strokeWidth:1.1, roughness:.7, disableMultiStroke:true}));
+  rc.line(31.5, 21.5+oy, 33.5, 21.5+oy, opts(s+17, null, null, {strokeWidth:1.1, roughness:.7, disableMultiStroke:true}));
 }
 
 function drawCat(rc, g, s, pose){
@@ -636,6 +671,72 @@ function drawHare(rc, g, s, pose){
   rc.circle(11, 28, 3.4, opts(s+9, '#e8dcc4', 'solid', {roughness:.8}));                // fluffy tail
 }
 
+function drawPigeon(rc, g, s, pose){
+  // city pigeon, side view facing right; ground poses peck, flight poses flap
+  const body = '#9aa3b2', wing = '#6e7a8c';
+  if (pose === 'fly0' || pose === 'fly1'){
+    // airborne — legs tucked, wings beating; anchor bottom-centre of 48x44
+    const up = pose === 'fly0';
+    rc.polygon([[6,28],[0,22],[2,32]], opts(s+4, wing, 'solid', {roughness:1.2}));       // tail fan
+    rc.ellipse(22, 27, 30, 14, opts(s, body, 'hachure', {hachureGap:2.4, fillWeight:2.2, strokeWidth:2}));
+    rc.circle(37, 21, 11, opts(s+1, body, 'hachure', {hachureGap:2.2, fillWeight:2, strokeWidth:2}));
+    rc.polygon([[42,20],[47,22],[42,24]], opts(s+2, '#d9a441', 'solid', {roughness:.8})); // beak
+    rc.circle(38, 19, 1.6, opts(s+3, INK, 'solid', {roughness:.5}));
+    if (up) rc.polygon([[16,23],[8,3],[30,15]], opts(s+5, wing, 'hachure', {hachureGap:2.2, fillWeight:2.2, strokeWidth:2}));
+    else    rc.polygon([[16,27],[10,42],[32,33]], opts(s+5, wing, 'hachure', {hachureGap:2.2, fillWeight:2.2, strokeWidth:2}));
+  } else {
+    // pecking about on the ground; the head bobs down in walk1 — 40x32
+    const peck = pose === 'walk1';
+    rc.line(16, 24, 15, 31, opts(s+6, null, null, {stroke:'#c76a5a', strokeWidth:2}));    // red legs
+    rc.line(22, 24, 24, 31, opts(s+7, null, null, {stroke:'#c76a5a', strokeWidth:2}));
+    rc.polygon([[6,18],[0,12],[3,22]], opts(s+4, wing, 'solid', {roughness:1.2}));        // tail
+    rc.ellipse(18, 18, 26, 15, opts(s, body, 'hachure', {hachureGap:2.4, fillWeight:2.2, strokeWidth:2}));
+    rc.ellipse(18, 17, 14, 9, opts(s+5, wing, 'hachure', {hachureGap:2.2, fillWeight:1.8, strokeWidth:1.4})); // folded wing
+    const hx = peck ? 30 : 28, hy = peck ? 16 : 8;
+    rc.circle(hx, hy, 10, opts(s+1, body, 'hachure', {hachureGap:2.2, fillWeight:2, strokeWidth:2}));
+    rc.polygon([[hx+4,hy-1],[hx+9,hy+2],[hx+4,hy+3]], opts(s+2, '#d9a441', 'solid', {roughness:.8}));
+    rc.circle(hx+1, hy-2, 1.6, opts(s+3, INK, 'solid', {roughness:.5}));
+  }
+}
+
+function drawBug(rc, g, s, type, pose){
+  // tiny flying critters the cat chases; two wing poses = fast flap
+  const up = pose === 'w0';
+  if (type === 'fly'){
+    // 14x12 — plump black body, stubby wings
+    rc.circle(6, 8, 6, opts(s, '#33333a', 'solid', {stroke:INK, roughness:.9}));
+    if (up){
+      rc.ellipse(9, 3, 8, 4, opts(s+1, '#c9d2dd', 'solid', {strokeWidth:1, roughness:.9}));
+      rc.ellipse(3, 3, 8, 4, opts(s+2, '#c9d2dd', 'solid', {strokeWidth:1, roughness:.9}));
+    } else {
+      rc.ellipse(10, 7, 8, 4, opts(s+1, '#c9d2dd', 'solid', {strokeWidth:1, roughness:.9}));
+      rc.ellipse(2, 7, 8, 4, opts(s+2, '#c9d2dd', 'solid', {strokeWidth:1, roughness:.9}));
+    }
+  } else if (type === 'mosquito'){
+    // 16x16 — thin whiny thing with dangling legs
+    rc.line(3, 8, 11, 7, opts(s, null, null, {strokeWidth:1.8, roughness:1}));            // body
+    rc.circle(12, 7, 3, opts(s+1, INK, 'solid', {roughness:.6}));                          // head
+    rc.line(13, 7, 16, 8, opts(s+2, null, null, {strokeWidth:1, roughness:.8}));           // proboscis
+    rc.line(6, 9, 4, 15, opts(s+3, null, null, {strokeWidth:1, roughness:1}));             // legs
+    rc.line(8, 9, 8, 15, opts(s+4, null, null, {strokeWidth:1, roughness:1}));
+    rc.line(10, 9, 12, 15, opts(s+5, null, null, {strokeWidth:1, roughness:1}));
+    const wy = up ? 2 : 6;
+    rc.ellipse(7, wy, 9, 4, opts(s+6, '#dde5ee', 'solid', {strokeWidth:1, roughness:.9}));
+  } else {
+    // moth — 22x18, fat fuzzy body, big pale wings
+    rc.ellipse(11, 11, 8, 10, opts(s, '#b3a284', 'hachure', {hachureGap:1.8, fillWeight:1.6, strokeWidth:1.4}));
+    rc.line(9, 4, 6, 1, opts(s+1, null, null, {strokeWidth:1, roughness:1}));              // antennae
+    rc.line(13, 4, 16, 1, opts(s+2, null, null, {strokeWidth:1, roughness:1}));
+    if (up){
+      rc.polygon([[9,9],[0,2],[2,13]], opts(s+3, '#d8ccae', 'hachure', {hachureGap:2, fillWeight:1.6, strokeWidth:1.4}));
+      rc.polygon([[13,9],[22,2],[20,13]], opts(s+4, '#d8ccae', 'hachure', {hachureGap:2, fillWeight:1.6, strokeWidth:1.4}));
+    } else {
+      rc.polygon([[9,11],[1,14],[4,17]], opts(s+3, '#d8ccae', 'hachure', {hachureGap:2, fillWeight:1.6, strokeWidth:1.4}));
+      rc.polygon([[13,11],[21,14],[18,17]], opts(s+4, '#d8ccae', 'hachure', {hachureGap:2, fillWeight:1.6, strokeWidth:1.4}));
+    }
+  }
+}
+
 function drawDog(rc, g, s, pose, col){
   // side view facing left; anchor bottom center of an 80x58 box
   const step = pose === 'walk1' ? 3 : 0;
@@ -803,6 +904,16 @@ const SPR = {
            lay:    makeSprite(72,48,(r,g,s)=>drawCat(r,g,s,'lay')) },
   hare:  { walk0: makeSprite(56,48,(r,g,s)=>drawHare(r,g,s,'walk0')),
            walk1: makeSprite(56,48,(r,g,s)=>drawHare(r,g,s,'walk1')) },
+  pigeon:{ walk0: makeSprite(40,32,(r,g,s)=>drawPigeon(r,g,s,'walk0')),
+           walk1: makeSprite(40,32,(r,g,s)=>drawPigeon(r,g,s,'walk1')),
+           fly0:  makeSprite(48,44,(r,g,s)=>drawPigeon(r,g,s,'fly0')),
+           fly1:  makeSprite(48,44,(r,g,s)=>drawPigeon(r,g,s,'fly1')) },
+  bug:   { fly:      { w0: makeSprite(14,12,(r,g,s)=>drawBug(r,g,s,'fly','w0')),
+                       w1: makeSprite(14,12,(r,g,s)=>drawBug(r,g,s,'fly','w1')) },
+           mosquito: { w0: makeSprite(16,16,(r,g,s)=>drawBug(r,g,s,'mosquito','w0')),
+                       w1: makeSprite(16,16,(r,g,s)=>drawBug(r,g,s,'mosquito','w1')) },
+           moth:     { w0: makeSprite(22,18,(r,g,s)=>drawBug(r,g,s,'moth','w0')),
+                       w1: makeSprite(22,18,(r,g,s)=>drawBug(r,g,s,'moth','w1')) } },
   bottle:{ idle:  makeSprite(22,42,(r,g,s)=>drawBottle(r,g,s)) },
   hedge: { walk0: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk0')),
            walk1: makeSprite(60,48,(r,g,s)=>drawHedgehog(r,g,s,'walk1')) },
@@ -1120,7 +1231,9 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  carSniffCooldown: 15 + Math.random() * 20, bottleCooldown: 22 + Math.random() * 25,
                  bottleSpot: null, rollCooldown: 18 + Math.random() * 22, holdDur: 0, squirmRot: 0,
                  reliefCooldown: 40 + Math.random() * 40,
-                 reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0 };
+                 reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0,
+                 pigeonCooldown: 14 + Math.random() * 16, pigeonTarget: null,
+                 bugCooldown: 8 + Math.random() * 10, bugTarget: null };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
 let wormTimer = 15;
@@ -1133,6 +1246,59 @@ function spawnHare(){
   const y = e === 2 ? 30 : e === 3 ? WORLD_H - 30 : 40 + Math.random() * (WORLD_H - 80);
   hares.push({ x, y, r: 7, dir: Math.random() * 6.28, speed: 150, moveT: 1,
                animT: 0, pose: 'walk0', flip: false, t: 0, life: 16 + Math.random() * 14 });
+}
+// pigeons pecking about — sneak up on one and it takes off WITH the cat,
+// ferrying him a stretch across the map (the player towed behind on the leash)
+const pigeons = [];
+let pigeonTimer = 6 + Math.random() * 10;
+function spawnPigeon(){
+  for (let k = 0; k < 24; k++){
+    const x = 60 + Math.random() * (WORLD_W - 120), y = 60 + Math.random() * (WORLD_H - 120);
+    if (x > camX - 60 && x < camX + VW + 60 && y > camY - 60 && y < camY + VH + 60) continue;  // not in view
+    if (colliders.some(c => x > c.x - 20 && x < c.x + c.w + 20 && y > c.y - 20 && y < c.y + c.h + 20)) continue;
+    pigeons.push({ x, y, r: 7, state: 'ground', dir: Math.random() * 6.28, moveT: 1,
+                   animT: 0, pose: 'walk0', flip: false, t: 0, life: 26 + Math.random() * 22,
+                   zOff: 0, cooT: 3 + Math.random() * 6, landTarget: null });
+    return;
+  }
+}
+function pickPigeonLanding(pg){
+  // somewhere a good stretch away, clear of the buildings/cars so the cat
+  // isn't dropped inside a collider
+  for (let k = 0; k < 24; k++){
+    const a = Math.random() * 6.28, d = 320 + Math.random() * 240;
+    const x = clamp(pg.x + Math.cos(a) * d, 60, WORLD_W - 60);
+    const y = clamp(pg.y + Math.sin(a) * d, 60, WORLD_H - 60);
+    if (!colliders.some(c => x > c.x - 28 && x < c.x + c.w + 28 && y > c.y - 28 && y < c.y + c.h + 28))
+      return { x, y };
+  }
+  return { x: clamp(pg.x + 320, 60, WORLD_W - 60), y: pg.y };
+}
+// flies / mosquitoes / moths that show up for a while and get chased; each
+// carries its own looping hum (synthesized) that plays for as long as it's there
+const bugs = [];
+let bugTimer = 8 + Math.random() * 10;
+function spawnBug(){
+  const dayT = dayPhase(), r = Math.random();
+  const type = dayT > 0.5 ? (r < 0.55 ? 'moth' : r < 0.8 ? 'mosquito' : 'fly')
+                          : (r < 0.55 ? 'fly' : 'mosquito');   // moths come out at dusk
+  let anchor;
+  if (type === 'moth'){
+    // moths flutter around the nearest street lamp
+    let best = LAMPS[0], bd = 1e9;
+    for (const L of LAMPS){
+      const d = Math.hypot(L[0] - player.x, L[1] - player.y);
+      if (d < bd){ bd = d; best = L; }
+    }
+    anchor = { x: best[0], y: best[1] - 20 };
+  } else {
+    const a = Math.random() * 6.28, d = 120 + Math.random() * 140;
+    anchor = { x: clamp(player.x + Math.cos(a) * d, 40, WORLD_W - 40),
+               y: clamp(player.y + Math.sin(a) * d, 40, WORLD_H - 40) };
+  }
+  bugs.push({ x: anchor.x, y: anchor.y, r: 3, type, anchor, t: 0, fade: 1,
+              life: 12 + Math.random() * 12, dir: Math.random() * 6.28, moveT: 0,
+              zOff: type === 'moth' ? 38 : 16, animT: 0, pose: 'w0', flip: false, audio: null });
 }
 const hedgehogs = [];
 const HEDGE_SPAWNS = [
@@ -1256,6 +1422,7 @@ function updateAudio(){
   if (loops.birds)    loops.birds.node.gain.setTargetAtTime(clamp(1 - dayT * 2.2, 0, 1) * 0.17 * wet, t, 1.2);
   if (loops.crickets) loops.crickets.node.gain.setTargetAtTime(clamp((dayT - 0.35) / 0.4, 0, 1) * 0.22 * wet, t, 1.2);
   updateCarAudio();
+  updateBugAudio();
 }
 // one-shots: short fade in/out envelope + optional pitch variation
 function playClip(name, vol, pitch){
@@ -1310,6 +1477,57 @@ function carAudioStop(mc){
   const a = mc.audio; mc.audio = null;
   a.g.gain.setTargetAtTime(0, AC.currentTime, 0.2);
   setTimeout(() => { try { a.src.stop(); } catch(e){} }, 600);
+}
+// per-bug looping hum, synthesized (no sample needed): a raspy wobbling
+// sawtooth for the fly, a thin whine for the mosquito, pulsed soft noise for
+// the moth's flutter — running for as long as the bug is around
+function bugAudioStart(b){
+  if (!audioOn) return;
+  const g = AC.createGain(); g.gain.value = 0;
+  const pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
+  const dest = pan || g;
+  if (pan){ pan.connect(g); }
+  g.connect(masterGain);
+  const nodes = [];
+  if (b.type === 'moth'){
+    const nb = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const dd = nb.getChannelData(0);
+    for (let i = 0; i < dd.length; i++) dd[i] = Math.random() * 2 - 1;
+    const src = AC.createBufferSource(); src.buffer = nb; src.loop = true;
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 230; bp.Q.value = 1.1;
+    const fl = AC.createGain(); fl.gain.value = 0.5;                 // wing-beat pulse
+    const lfo = AC.createOscillator(); lfo.frequency.value = 9;
+    const lg = AC.createGain(); lg.gain.value = 0.45;
+    lfo.connect(lg); lg.connect(fl.gain);
+    src.connect(bp); bp.connect(fl); fl.connect(dest);
+    src.start(); lfo.start(); nodes.push(src, lfo);
+  } else {
+    const osc = AC.createOscillator();
+    osc.type = b.type === 'fly' ? 'sawtooth' : 'triangle';
+    osc.frequency.value = b.type === 'fly' ? 170 : 620;
+    const lfo = AC.createOscillator(); lfo.frequency.value = b.type === 'fly' ? 7 : 12;
+    const lg = AC.createGain(); lg.gain.value = b.type === 'fly' ? 24 : 46;
+    lfo.connect(lg); lg.connect(osc.frequency);                      // wobbly pitch
+    osc.connect(dest); osc.start(); lfo.start(); nodes.push(osc, lfo);
+  }
+  b.audio = { g, pan, nodes };
+}
+function updateBugAudio(){
+  for (const b of bugs){
+    if (!b.audio && audioOn) bugAudioStart(b);
+    if (b.audio){
+      const d = Math.hypot(b.x - player.x, b.y - player.y);
+      const base = b.type === 'fly' ? 0.09 : b.type === 'mosquito' ? 0.055 : 0.07;
+      b.audio.g.gain.setTargetAtTime(clamp(1 - d / 460, 0, 1) * base * b.fade, AC.currentTime, 0.15);
+      if (b.audio.pan) b.audio.pan.pan.setTargetAtTime(clamp((b.x - player.x) / 420, -1, 1), AC.currentTime, 0.15);
+    }
+  }
+}
+function bugAudioStop(b){
+  if (!b.audio) return;
+  const a = b.audio; b.audio = null;
+  a.g.gain.setTargetAtTime(0, AC.currentTime, 0.12);
+  setTimeout(() => a.nodes.forEach(n => { try { n.stop(); } catch(e){} }), 450);
 }
 
 // ===================== INPUT =====================
@@ -1536,6 +1754,101 @@ function update(dt){
       hares.splice(i, 1);                       // fully off-screen now — gone
     }
   }
+  // ---- pigeons: peck about; a startled one bolts skyward WITH the cat ----
+  pigeonTimer -= dt;
+  if (pigeonTimer <= 0){
+    if (pigeons.length < 3) spawnPigeon();
+    pigeonTimer = 14 + Math.random() * 20;
+  }
+  for (let i = pigeons.length - 1; i >= 0; i--){
+    const pg = pigeons[i]; pg.t += dt;
+    if (pg.state === 'ground'){
+      // the player stomping too close scares it off (the CAT triggers the ride)
+      if (pg.t > pg.life || dist(pg, player) < 42){
+        pg.state = 'flyaway';
+        pg.dir = Math.atan2(pg.y - player.y, pg.x - player.x);
+      } else {
+        pg.cooT -= dt;
+        if (pg.cooT <= 0){
+          if (dist(pg, player) < 220 && !bubbles.some(b => b.ent === pg)) say(pg, T.pigeon.coo, 1.1);
+          pg.cooT = 7 + Math.random() * 9;
+        }
+        pg.moveT -= dt;
+        if (pg.moveT <= 0){
+          pg.dir = Math.random() * 6.28;
+          pg.moveT = 0.8 + Math.random() * 1.6;
+          if (Math.random() < 0.45) pg.moveT = -(0.7 + Math.random() * 1.4);   // pause & peck
+        }
+        if (pg.moveT > 0){
+          pg.x += Math.cos(pg.dir) * 24 * dt;
+          pg.y += Math.sin(pg.dir) * 24 * dt;
+          pg.flip = Math.cos(pg.dir) < 0;
+          pg.animT += dt;
+          pg.pose = (Math.floor(pg.animT / 0.22) % 2) ? 'walk1' : 'walk0';
+          collide(pg);
+        } else {
+          pg.animT += dt;
+          pg.pose = (Math.floor(pg.animT / 0.34) % 2) ? 'walk1' : 'walk0';     // peck bob
+        }
+      }
+    } else if (pg.state === 'carry'){
+      // hauling the cat: beeline for the landing spot, cat dangling below
+      const lt = pg.landTarget;
+      const dd = Math.hypot(lt.x - pg.x, lt.y - pg.y) || 1;
+      pg.zOff = cat.zOff + 30;
+      pg.x += (lt.x - pg.x) / dd * 175 * dt;
+      pg.y += (lt.y - pg.y) / dd * 175 * dt;
+      pg.flip = (lt.x - pg.x) < 0;
+      pg.animT += dt;
+      pg.pose = (Math.floor(pg.animT / 0.1) % 2) ? 'fly1' : 'fly0';
+      if (dd < 10){                                  // drops him and clears off
+        pg.state = 'flyaway'; pg.dir = Math.random() * 6.28;
+        if (cat.state === 'pigeonRide'){ cat.state = 'pigeonDrop'; cat.stateT = 0; }
+      }
+    } else {                                         // flyaway — up, up and gone
+      pg.zOff += 95 * dt;
+      pg.x += Math.cos(pg.dir) * 130 * dt;
+      pg.y += Math.sin(pg.dir) * 130 * dt;
+      pg.flip = Math.cos(pg.dir) < 0;
+      pg.animT += dt;
+      pg.pose = (Math.floor(pg.animT / 0.1) % 2) ? 'fly1' : 'fly0';
+      if (pg.zOff > 135) pigeons.splice(i, 1);
+    }
+  }
+
+  // ---- bugs: flies/mosquitoes/moths that hang around a spot for a while ----
+  bugTimer -= dt;
+  if (bugTimer <= 0){
+    if (gameState === 'play' && bugs.length < 2) spawnBug();
+    bugTimer = 16 + Math.random() * 22;
+  }
+  for (let i = bugs.length - 1; i >= 0; i--){
+    const b = bugs[i]; b.t += dt;
+    if (b.t > b.life){
+      b.fade -= dt * 1.6;                            // dissolves into thin air
+      if (b.fade <= 0){ bugAudioStop(b); bugs.splice(i, 1); continue; }
+    }
+    b.moveT -= dt;
+    if (b.moveT <= 0){
+      // erratic darting, drawn back toward its anchor spot
+      const home = Math.atan2(b.anchor.y - b.y, b.anchor.x - b.x);
+      const far = dist(b, b.anchor) > 90;
+      b.dir = far ? home + (Math.random() - 0.5) * 0.8 : Math.random() * 6.28;
+      b.moveT = 0.12 + Math.random() * 0.3;
+    }
+    if (cat.state === 'chaseBug' && cat.bugTarget === b && dist(b, cat) < 70)
+      b.dir = Math.atan2(b.y - cat.y, b.x - cat.x) + (Math.random() - 0.5) * 0.9;  // dodge the paws
+    const bsp = b.type === 'fly' ? 150 : b.type === 'mosquito' ? 115 : 85;
+    b.x += Math.cos(b.dir) * bsp * dt;
+    b.y += Math.sin(b.dir) * bsp * dt;
+    b.x = clamp(b.x, 30, WORLD_W - 30); b.y = clamp(b.y, 30, WORLD_H - 30);
+    b.zOff = (b.type === 'moth' ? 38 : 16) + Math.sin(b.t * 5.3) * 8;
+    if (Math.abs(Math.cos(b.dir)) > 0.25) b.flip = Math.cos(b.dir) < 0;
+    b.animT += dt;
+    const flap = b.type === 'moth' ? 0.11 : 0.05;
+    b.pose = (Math.floor(b.animT / flap) % 2) ? 'w1' : 'w0';
+  }
+
   // flung dirt specks (from the cat burying)
   for (let i = dirt.length - 1; i >= 0; i--){
     const d = dirt[i]; d.t += dt; d.vy += 320 * dt;
@@ -1775,7 +2088,8 @@ function update(dt){
 
   // a nearby dog frightens the cat, interrupting most activities (but not while held/safe)
   if (cat.state !== 'scared' && cat.state !== 'toDest' && cat.state !== 'petted' &&
-      cat.state !== 'inTree' && cat.state !== 'downTree' && cat.state !== 'held'){
+      cat.state !== 'inTree' && cat.state !== 'downTree' && cat.state !== 'held' &&
+      cat.state !== 'pigeonRide' && cat.state !== 'pigeonDrop'){
     const nd = nearestDog();
     if (nd.dog && nd.d < 115){
       if (cat.target) cat.target.paused = false;
@@ -1859,6 +2173,30 @@ function update(dt){
           break;
         }
       }
+    }
+    // a buzzing bug is irresistible — dart after it until it vanishes
+    cat.bugCooldown -= dt;
+    if (cat.state === 'wander' && cat.bugCooldown <= 0){
+      for (const b of bugs){
+        if (dist(cat, b) < 170){
+          cat.state = 'chaseBug'; cat.bugTarget = b; cat.stateT = 0;
+          say(cat, T.bug.spotted, 1); playMeow();
+          break;
+        }
+      }
+      if (cat.state === 'wander') cat.bugCooldown = 3;
+    }
+    // sneak up on a pecking pigeon (this will not end how he expects)
+    cat.pigeonCooldown -= dt;
+    if (cat.state === 'wander' && cat.pigeonCooldown <= 0){
+      for (const pg of pigeons){
+        if (pg.state === 'ground' && dist(cat, pg) < 160){
+          cat.state = 'toPigeon'; cat.pigeonTarget = pg; cat.stateT = 0;
+          say(cat, T.cat.excited, 1); playMeow();
+          break;
+        }
+      }
+      if (cat.state === 'wander') cat.pigeonCooldown = 6;
     }
     // spot a hedgehog
     if (cat.state === 'wander' && catTalkCooldown <= 0){
@@ -2045,6 +2383,60 @@ function update(dt){
       cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 3;
     } else { catTarget = h; catSpeed = 235; }         // the leash reins him in anyway
   }
+  else if (cat.state === 'chaseBug'){
+    const b = cat.bugTarget;
+    // it dissolved, drifted out of reach, or he's been at it long enough
+    if (!b || bugs.indexOf(b) < 0 || b.t > b.life || dist(cat, b) > 320 || cat.stateT > 9){
+      const gone = !b || bugs.indexOf(b) < 0 || b.t > b.life;
+      cat.state = 'wander'; cat.stateT = 0; cat.bugTarget = null;
+      cat.bugCooldown = 10 + Math.random() * 10; catTalkCooldown = 4;
+      if (gone && !bubbles.some(bb => bb.ent === cat)){
+        say(cat, T.bug.gone[Math.floor(Math.random() * T.bug.gone.length)], 2.4); playMumble();
+      }
+    } else {
+      catTarget = b; catSpeed = 225;                 // it's airborne — he never gets it
+      if (dist(cat, b) < 26){ catTarget = null; catSpeed = 0; cat.flip = b.x < cat.x;
+        cat.pose = (Math.floor(cat.stateT / 0.16) % 2) ? 'stalk1' : 'stalk0'; }   // swatting
+    }
+  }
+  else if (cat.state === 'toPigeon'){
+    const pg = cat.pigeonTarget;
+    if (!pg || pg.state !== 'ground' || pigeons.indexOf(pg) < 0){
+      cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null; cat.pigeonCooldown = 10;
+    } else {
+      catTarget = pg; catSpeed = 200;
+      if (dist(cat, pg) < 24){
+        // the pigeon panics, snatches the harness and takes off with him
+        pg.state = 'carry'; pg.landTarget = pickPigeonLanding(pg);
+        say(pg, T.pigeon.startle, 1.2);
+        cat.state = 'pigeonRide'; cat.stateT = 0; cat._rideYelled = false;
+        playHiss();
+      } else if (cat.stateT > 4){                    // leash too short after all
+        cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null; cat.pigeonCooldown = 12;
+      }
+    }
+  }
+  else if (cat.state === 'pigeonRide'){
+    catSpeed = 0; cat.pose = 'scared';
+    const pg = cat.pigeonTarget;
+    if (!pg || pg.state !== 'carry'){ cat.state = 'pigeonDrop'; cat.stateT = 0; }
+    else {
+      cat.x = pg.x; cat.y = pg.y; cat.flip = pg.flip;   // dangling under the pigeon
+      if (!cat._rideYelled && cat.stateT > 0.5){
+        cat._rideYelled = true;
+        say(cat, T.pigeon.flight[Math.floor(Math.random() * T.pigeon.flight.length)], 2.6); playMeow();
+        say(player, T.pigeon.playerShout, 2.4);
+      }
+    }
+  }
+  else if (cat.state === 'pigeonDrop'){
+    catSpeed = 0; cat.pose = 'scared';                 // falling the last bit
+    if (cat.zOff < 3){
+      cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null;
+      cat.pigeonCooldown = 60 + Math.random() * 45; catTalkCooldown = 5;
+      say(cat, T.pigeon.landed[Math.floor(Math.random() * T.pigeon.landed.length)], 2.8); playMumble();
+    }
+  }
   else if (cat.state === 'toWorm'){
     const w = cat.wormTarget;
     if (!w || w.state !== 'out'){ cat.state = 'wander'; cat.stateT = 0; }
@@ -2168,7 +2560,7 @@ function update(dt){
       if (cat.state === 'scared'){ cat.pose = 'scared'; }
       else {
         cat.animT += dt;
-        const gait = cat.state === 'approach' ? 'stalk'
+        const gait = (cat.state === 'approach' || cat.state === 'toPigeon') ? 'stalk'
                    : (weatherLevel >= 2 && cat.state === 'wander') ? 'hunch' : 'walk';
         cat.pose = gait + ((Math.floor(cat.animT / 0.22) % 2) ? '1' : '0');
       }
@@ -2176,8 +2568,10 @@ function update(dt){
       cat.pose = (weatherLevel >= 2) ? 'hunch0' : 'walk0';
     }
   }
-  // jump up into / down from the canopy (drawn height above the ground spot)
-  const zTarget = (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.perch : 0;
+  // jump up into / down from the canopy (drawn height above the ground spot);
+  // the pigeon ride lifts him to a fixed cruising height
+  const zTarget = (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.perch
+                : (cat.state === 'pigeonRide') ? 54 : 0;
   cat.zOff += clamp(zTarget - cat.zOff, -260 * dt, 260 * dt);
 
   // leash constraint (not during ending, and not while the cat is in the arms)
@@ -2185,7 +2579,15 @@ function update(dt){
     // while examining something interesting, the cat digs in and anchors YOU
     const planted = ['lay','watchHedge','sniffCar','stareBottle','roll','relief','bury','playWorm'].includes(cat.state);
     const d = dist(cat, player);
-    if (planted){
+    if (cat.state === 'pigeonRide' || cat.state === 'pigeonDrop'){
+      // airborne behind the pigeon — the leash tows the PLAYER along the ground
+      if (d > LEASH_LEN){
+        const vx = (player.x - cat.x) / d, vy = (player.y - cat.y) / d;
+        player.x = cat.x + vx * LEASH_LEN;
+        player.y = cat.y + vy * LEASH_LEN;
+      }
+      cat.dragT = 0;
+    } else if (planted){
       if (d > LEASH_LEN){
         const vx = (player.x - cat.x) / d, vy = (player.y - cat.y) / d;
         player.x = cat.x + vx * LEASH_LEN;     // he holds his ground — pull the player back
@@ -2208,7 +2610,7 @@ function update(dt){
       cat.dragT = 0;
     }
   }
-  collide(cat);
+  if (cat.state !== 'pigeonRide' && cat.state !== 'pigeonDrop') collide(cat);   // airborne clears obstacles
 
   // ---- hedgehogs ----
   for (const h of hedgehogs){
@@ -2249,7 +2651,7 @@ function update(dt){
        cat.state === 'toRelief' || cat.state === 'relief' || cat.state === 'bury' ||
        cat.state === 'chaseHare' || cat.state === 'toCar' || cat.state === 'sniffCar' ||
        cat.state === 'watchHedge' || cat.state === 'toBottle' || cat.state === 'stareBottle' ||
-       cat.state === 'roll')){
+       cat.state === 'roll' || cat.state === 'toPigeon' || cat.state === 'chaseBug')){
     gameState = 'ending';
     if (cat.target) cat.target.paused = false;
     cat.state = 'toDest'; cat.stateT = 0;
@@ -2339,7 +2741,8 @@ function wrapText(text, maxW){
 function drawBubbles(variant){
   for (const b of bubbles){
     const e = b.ent;
-    const top = e.isDog ? 30 : e === cat ? 42 + cat.zOff : hedgehogs.includes(e) ? 42 : 116;
+    const top = e.isDog ? 30 : e === cat ? 42 + cat.zOff : hedgehogs.includes(e) ? 42
+              : pigeons.includes(e) ? 30 + e.zOff : 116;
     const lines = wrapText(b.text, 190);
     const lw = Math.max(...lines.map(l => ctx.measureText(l).width));
     const bw = lw + 24, bh = lines.length * 19 + 16;
@@ -2655,6 +3058,7 @@ function render(now){
   peds.forEach(p => { shadow(p, 15, 5); if (p.dog) shadow(p.dog, 18 * p.dog.scale, 5); });
   hedgehogs.forEach(h => shadow(h, 14, 4));
   hares.forEach(h => shadow(h, 14, 4));
+  pigeons.forEach(pg => { if (pg.state === 'ground') shadow(pg, 10, 3); });
   BOTTLES.forEach(b => shadow({ x: b[0], y: b[1] }, 8, 3));
   TREES.forEach(t => {
     const e = { x: t[0], y: t[1] };
@@ -2707,6 +3111,15 @@ function render(now){
   } });
   hedgehogs.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hedge[h.pose], variant, h) }));
   hares.forEach(h => ents.push({ y: h.y, draw: () => drawSprite(SPR.hare[h.pose], variant, h) }));
+  // pigeons draw at their flight height; the carrier sorts just above the cat
+  pigeons.forEach(pg => ents.push({ y: pg.y + (pg.state === 'carry' ? 2 : 0), draw: () =>
+    drawSprite(SPR.pigeon[pg.pose], variant, { x: pg.x, y: pg.y - pg.zOff, flip: pg.flip }) }));
+  bugs.forEach(b => ents.push({ y: b.y, draw: () => {
+    ctx.save();
+    ctx.globalAlpha = clamp(b.fade, 0, 1);
+    drawSprite(SPR.bug[b.type][b.pose], variant, { x: b.x, y: b.y - b.zOff, flip: b.flip });
+    ctx.restore();
+  } }));
   BOTTLES.forEach(b => ents.push({ y: b[1], draw: () => drawSprite(SPR.bottle.idle, variant, { x: b[0], y: b[1], flip: false }) }));
   TREES.forEach((t, i) => ents.push({ y: t[1], draw: () => drawSprite(SPR.tree['v' + (i % 3)], variant, { x: t[0], y: t[1], flip: false }) }));
   ents.sort((a, b) => a.y - b.y);
