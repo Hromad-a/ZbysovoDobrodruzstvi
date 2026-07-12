@@ -612,6 +612,8 @@ function drawFaceInWindow(rc, g, s, kind){
   rc.line(12, 11, 14, 11, opts(s+5, null, null, {strokeWidth:1.3, roughness:.8}));
 }
 
+// this game's tram runs as line 22 or 26 (picked once per load)
+const TRAM_NO = Math.random() < 0.5 ? '22' : '26';
 function drawTram(rc, g, s){
   // facing left (arrives from the right); anchor = bottom center
   rc.polygon([[8,70],[8,32],[18,20],[214,20],[222,32],[222,70]],
@@ -627,6 +629,13 @@ function drawTram(rc, g, s){
   // pantograph
   rc.line(120, 20, 106, 6, opts(s+8, null, null, {strokeWidth:2.2}));
   rc.line(106, 6, 138, 9, opts(s+9, null, null, {strokeWidth:2.2}));
+  // route number — lit sign up front + a small one on the side skirt
+  rc.rectangle(13, 22, 18, 11, opts(s+10, PAL.winLit, 'solid', {strokeWidth:1.4, roughness:1}));
+  rc.rectangle(188, 57, 18, 11, opts(s+11, PAL.winLit, 'solid', {strokeWidth:1.4, roughness:1}));
+  g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = 'bold 10px "Pangolin","Comic Sans MS",cursive';
+  g.fillText(TRAM_NO, 22, 28.5);
+  g.fillText(TRAM_NO, 197, 63.5);
 }
 
 function drawWormSprite(rc, g, s){
@@ -986,6 +995,14 @@ const GREENZONES = [
 ];
 // park & courtyard benches [x,y] (top-left of the 60x10 seat) — the player sits when idle beside one
 const BENCHES = [ [480,600],[720,510],[300,1000],[1560,320],[1700,1080] ];
+// prádelní šňůry — clotheslines with laundry out to dry; `wall: true` is strung
+// between two facades, otherwise it hangs between two courtyard T-posts
+const CLOTHESLINES = [
+  { a: [432, 192], b: [518, 198], wall: true },   // between the two NW paneláky
+  { a: [350, 1115], b: [490, 1115] },             // courtyard posts by the SW panelák
+  { a: [540, 1118], b: [660, 1124] },             // posts above the bottom-centre panelák
+];
+const LAUNDRY_COLS = ['#5f9ea0', '#e7b7b0', '#b7c9e0', '#c98f4a'];
 // discarded 2L Braník bottles the cat stops to stare at [x,y]
 const BOTTLES = [ [560,650],[1650,1060],[330,980] ];
 
@@ -994,6 +1011,8 @@ CARS.forEach(c => block(c.x, c.y - 14, c.w, c.h));
 BINS.forEach(b => block(b.x, b.y, 44, 30));
 TREES.forEach(t => block(t[0] - 8, t[1] - 10, 16, 12));
 LAMPS.forEach(L => block(L[0] - 3, L[1] - 6, 6, 8));
+CLOTHESLINES.forEach(cl => { if (!cl.wall){
+  block(cl.a[0] - 3, cl.a[1] + 38, 6, 8); block(cl.b[0] - 3, cl.b[1] + 38, 6, 8); } });
 
 const LITWINS = [];   // centers of lit building windows, for the night glow
 const ALLWINS = [];   // centers of every building window, for window-dwellers
@@ -1115,6 +1134,44 @@ function drawWorld(rc, g, s){
   LAMPS.forEach((L, i) => {
     rc.line(L[0], L[1], L[0], L[1] - 46, opts(s+120+i, null, null, {strokeWidth:3}));
     rc.circle(L[0], L[1] - 48, 11, opts(s+140+i, PAL.win, 'solid', {strokeWidth:1.8, roughness:1.2}));
+  });
+
+  // prádelní šňůry — sagging lines with laundry pegged out to dry
+  CLOTHESLINES.forEach((cl, ci) => {
+    const [ax, ay] = cl.a, [bx, by] = cl.b;
+    if (!cl.wall){
+      [[ax, ay], [bx, by]].forEach((p, pi) => {           // courtyard T-posts
+        rc.line(p[0], p[1] + 46, p[0], p[1], opts(s+160+ci*10+pi, null, null, {strokeWidth:3}));
+        rc.line(p[0] - 7, p[1], p[0] + 7, p[1], opts(s+165+ci*10+pi, null, null, {strokeWidth:2.6}));
+      });
+    }
+    const sag = 9;
+    rc.curve([[ax, ay], [(ax+bx)/2, (ay+by)/2 + sag], [bx, by]],
+      opts(s+170+ci, null, null, {stroke:'#8a8f9a', strokeWidth:1.6, roughness:1.6}));
+    // laundry pieces, deterministically varied per line
+    const n = (bx - ax) > 110 ? 4 : 3;
+    for (let k = 0; k < n; k++){
+      const t = (k + 1) / (n + 1) + (((ci * 13 + k * 7) % 5) - 2) * 0.015;
+      const px2 = ax + (bx - ax) * t;
+      const py2 = ay + (by - ay) * t + sag * Math.sin(Math.PI * t);
+      const col = LAUNDRY_COLS[(ci * 2 + k) % LAUNDRY_COLS.length];
+      const ps = s + 180 + ci * 20 + k * 5;
+      rc.line(px2 - 1, py2 - 2, px2 + 1, py2 + 3, opts(ps, null, null, {strokeWidth:1.4, roughness:.8}));  // peg
+      const kind = (ci + k) % 3;
+      if (kind === 0){                                    // a little shirt
+        rc.polygon([[px2-6, py2+3],[px2+6, py2+3],[px2+7, py2+20],[px2-7, py2+20]],
+          opts(ps+1, col, 'hachure', {hachureGap:2.6, fillWeight:1.8, strokeWidth:1.6}));
+        rc.line(px2 - 6, py2 + 6, px2 - 11, py2 + 13, opts(ps+2, null, null, {stroke:col, strokeWidth:3}));
+        rc.line(px2 + 6, py2 + 6, px2 + 11, py2 + 13, opts(ps+3, null, null, {stroke:col, strokeWidth:3}));
+      } else if (kind === 1){                             // a sheet
+        rc.rectangle(px2 - 9, py2 + 2, 18, 21, opts(ps+1, '#efe8d2', 'solid', {strokeWidth:1.6, roughness:1.7}));
+      } else {                                            // a pair of socks
+        rc.line(px2 - 4, py2 + 2, px2 - 4, py2 + 12, opts(ps+1, null, null, {stroke:col, strokeWidth:4, roughness:1.2}));
+        rc.line(px2 - 4, py2 + 12, px2 - 8, py2 + 15, opts(ps+2, null, null, {stroke:col, strokeWidth:4, roughness:1.2}));
+        rc.line(px2 + 4, py2 + 2, px2 + 4, py2 + 12, opts(ps+3, null, null, {stroke:col, strokeWidth:4, roughness:1.2}));
+        rc.line(px2 + 4, py2 + 12, px2 + 8, py2 + 15, opts(ps+4, null, null, {stroke:col, strokeWidth:4, roughness:1.2}));
+      }
+    }
   });
 }
 
