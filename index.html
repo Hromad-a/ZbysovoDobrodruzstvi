@@ -1232,7 +1232,7 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  bottleSpot: null, rollCooldown: 18 + Math.random() * 22, holdDur: 0, squirmRot: 0,
                  reliefCooldown: 40 + Math.random() * 40,
                  reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0,
-                 pigeonTarget: null,
+                 pigeonTarget: null, wormCooldown: 0,
                  bugCooldown: 8 + Math.random() * 10, bugTarget: null,
                  pounce: null, pounceCd: 0 };
 let playT = 0;
@@ -2251,7 +2251,8 @@ function update(dt){
       cat.state = 'eatWorm'; cat.stateT = 0; cat.munch2 = false; playMunch();
     }
     // spot a worm to play with (unless already carrying one)
-    if (cat.state === 'wander' && !cat.carriedWorm){
+    cat.wormCooldown -= dt;
+    if (cat.state === 'wander' && !cat.carriedWorm && cat.wormCooldown <= 0){
       for (const w of worms){
         if (w.state === 'out' && dist(cat, w) < 110 &&
             Math.hypot(player.x - w.x, player.y - w.y) < LEASH_LEN - 10){
@@ -2660,6 +2661,13 @@ function update(dt){
           cat.script = null; cat.wormTarget = null;
           cat.state = 'wander'; cat.stateT = 0; catTalkCooldown = 5;
           say(cat, T.cat.dragged, 1.6); cat.dragT = 0;
+          // …and actually comes: block every instant re-plant for a while,
+          // otherwise "už jdu" flops right back down on the same spot
+          cat.rollCooldown = Math.max(cat.rollCooldown, 12);
+          cat.carSniffCooldown = Math.max(cat.carSniffCooldown, 10);
+          cat.bottleCooldown = Math.max(cat.bottleCooldown, 10);
+          cat.reliefCooldown = Math.max(cat.reliefCooldown, 15);
+          cat.wormCooldown = 8;
         }
       } else cat.dragT = 0;
     } else if (d > LEASH_LEN){                   // normal: the cat is reined to the player
