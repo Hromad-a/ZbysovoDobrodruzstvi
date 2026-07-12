@@ -1233,7 +1233,8 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  reliefCooldown: 40 + Math.random() * 40,
                  reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0,
                  pigeonCooldown: 14 + Math.random() * 16, pigeonTarget: null,
-                 bugCooldown: 8 + Math.random() * 10, bugTarget: null };
+                 bugCooldown: 8 + Math.random() * 10, bugTarget: null,
+                 pounce: null, pounceCd: 0 };
 let playT = 0;
 const worms = [];        // {x,y,state:'emerging'|'out'|'carried'|'gone',t}
 let wormTimer = 15;
@@ -1488,38 +1489,62 @@ function bugAudioStart(b){
   const dest = pan || g;
   if (pan){ pan.connect(g); }
   g.connect(masterGain);
-  const nodes = [];
+  const nodes = [], oscs = [];
   if (b.type === 'moth'){
+    // velvet wing flutter: soft low noise, pulsed at wing-beat rate, with a
+    // second slow LFO wandering the pulse depth so it doesn't tick like a clock
     const nb = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
     const dd = nb.getChannelData(0);
     for (let i = 0; i < dd.length; i++) dd[i] = Math.random() * 2 - 1;
     const src = AC.createBufferSource(); src.buffer = nb; src.loop = true;
-    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 230; bp.Q.value = 1.1;
-    const fl = AC.createGain(); fl.gain.value = 0.5;                 // wing-beat pulse
-    const lfo = AC.createOscillator(); lfo.frequency.value = 9;
-    const lg = AC.createGain(); lg.gain.value = 0.45;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 0.7;
+    const fl = AC.createGain(); fl.gain.value = 0.5;
+    const lfo = AC.createOscillator(); lfo.frequency.value = 7.4;
+    const lg = AC.createGain(); lg.gain.value = 0.3;
+    const lfo2 = AC.createOscillator(); lfo2.frequency.value = 0.53;
+    const lg2 = AC.createGain(); lg2.gain.value = 0.12;
     lfo.connect(lg); lg.connect(fl.gain);
-    src.connect(bp); bp.connect(fl); fl.connect(dest);
-    src.start(); lfo.start(); nodes.push(src, lfo);
+    lfo2.connect(lg2); lg2.connect(fl.gain);
+    src.connect(lp); lp.connect(fl); fl.connect(dest);
+    src.start(); lfo.start(); lfo2.start(); nodes.push(src, lfo, lfo2);
   } else {
-    const osc = AC.createOscillator();
-    osc.type = b.type === 'fly' ? 'sawtooth' : 'triangle';
-    osc.frequency.value = b.type === 'fly' ? 170 : 620;
-    const lfo = AC.createOscillator(); lfo.frequency.value = b.type === 'fly' ? 7 : 12;
-    const lg = AC.createGain(); lg.gain.value = b.type === 'fly' ? 24 : 46;
-    lfo.connect(lg); lg.connect(osc.frequency);                      // wobbly pitch
-    osc.connect(dest); osc.start(); lfo.start(); nodes.push(osc, lfo);
+    // two slightly detuned oscillators beating against each other through a
+    // gentle lowpass — much closer to a real insect drone than a bare tone
+    const base = b.type === 'fly' ? 160 : 470;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.value = b.type === 'fly' ? 850 : 2100; lp.Q.value = 1.4;
+    lp.connect(dest);
+    [[1, 0.6], [b.type === 'fly' ? 1.014 : 1.019, 0.45]].forEach(([det, vol]) => {
+      const osc = AC.createOscillator();
+      osc.type = b.type === 'fly' ? 'sawtooth' : 'triangle';
+      osc.frequency.value = base * det;
+      const og = AC.createGain(); og.gain.value = vol;
+      osc.connect(og); og.connect(lp);
+      osc.start(); nodes.push(osc); oscs.push({ osc, base: base * det });
+    });
+    // shared wing-beat shimmer on both partials
+    const lfo = AC.createOscillator(); lfo.frequency.value = b.type === 'fly' ? 6.8 : 9.5;
+    const lg = AC.createGain(); lg.gain.value = b.type === 'fly' ? 6 : 11;
+    lfo.connect(lg); oscs.forEach(o => lg.connect(o.osc.frequency));
+    lfo.start(); nodes.push(lfo);
   }
-  b.audio = { g, pan, nodes };
+  b.audio = { g, pan, nodes, oscs };
 }
 function updateBugAudio(){
   for (const b of bugs){
     if (!b.audio && audioOn) bugAudioStart(b);
     if (b.audio){
+      const t = AC.currentTime;
       const d = Math.hypot(b.x - player.x, b.y - player.y);
-      const base = b.type === 'fly' ? 0.09 : b.type === 'mosquito' ? 0.055 : 0.07;
-      b.audio.g.gain.setTargetAtTime(clamp(1 - d / 460, 0, 1) * base * b.fade, AC.currentTime, 0.15);
-      if (b.audio.pan) b.audio.pan.pan.setTargetAtTime(clamp((b.x - player.x) / 420, -1, 1), AC.currentTime, 0.15);
+      const base = b.type === 'fly' ? 0.07 : b.type === 'mosquito' ? 0.045 : 0.06;
+      b.audio.g.gain.setTargetAtTime(clamp(1 - d / 460, 0, 1) * base * b.fade, t, 0.15);
+      if (b.audio.pan) b.audio.pan.pan.setTargetAtTime(clamp((b.x - player.x) / 420, -1, 1), t, 0.15);
+      // slow organic pitch wander, plus little swoops whenever it darts
+      // (b.dir jumps feed the phase; the ramp smooths them into glides)
+      if (b.audio.oscs.length){
+        const swoop = 1 + 0.05 * Math.sin(b.t * 0.8 + b.dir) + 0.03 * Math.sin(b.t * 2.3);
+        for (const o of b.audio.oscs) o.osc.frequency.setTargetAtTime(o.base * swoop, t, 0.1);
+      }
     }
   }
 }
@@ -2385,8 +2410,19 @@ function update(dt){
   }
   else if (cat.state === 'chaseBug'){
     const b = cat.bugTarget;
+    if (cat.pounce){
+      // mid-leap: sail along the arc he committed to (the bug slips aside)
+      catSpeed = 0;
+      const P = cat.pounce; P.t += dt;
+      const p = Math.min(1, P.t / P.dur);
+      cat.x = P.x0 + (P.x1 - P.x0) * p;
+      cat.y = P.y0 + (P.y1 - P.y0) * p;
+      cat.zOff = Math.sin(p * Math.PI) * 26;
+      cat.flip = P.x1 < P.x0;
+      if (p >= 1){ cat.pounce = null; cat.zOff = 0; cat.pounceCd = 0.7 + Math.random() * 0.9; }
+    }
     // it dissolved, drifted out of reach, or he's been at it long enough
-    if (!b || bugs.indexOf(b) < 0 || b.t > b.life || dist(cat, b) > 320 || cat.stateT > 9){
+    else if (!b || bugs.indexOf(b) < 0 || b.t > b.life || dist(cat, b) > 320 || cat.stateT > 9){
       const gone = !b || bugs.indexOf(b) < 0 || b.t > b.life;
       cat.state = 'wander'; cat.stateT = 0; cat.bugTarget = null;
       cat.bugCooldown = 10 + Math.random() * 10; catTalkCooldown = 4;
@@ -2394,9 +2430,19 @@ function update(dt){
         say(cat, T.bug.gone[Math.floor(Math.random() * T.bug.gone.length)], 2.4); playMumble();
       }
     } else {
-      catTarget = b; catSpeed = 225;                 // it's airborne — he never gets it
-      if (dist(cat, b) < 26){ catTarget = null; catSpeed = 0; cat.flip = b.x < cat.x;
-        cat.pose = (Math.floor(cat.stateT / 0.16) % 2) ? 'stalk1' : 'stalk0'; }   // swatting
+      cat.pounceCd -= dt;
+      const d = dist(cat, b);
+      if (d < 64 && cat.pounceCd <= 0){
+        // wind-up done — leap at where it's headed (it always gets away)
+        const lead = 10 + Math.random() * 14;
+        cat.pounce = { x0: cat.x, y0: cat.y, t: 0, dur: 0.38,
+                       x1: b.x + Math.cos(b.dir) * lead, y1: b.y + Math.sin(b.dir) * lead,
+                       variant: Math.floor(Math.random() * SPR.jumpcat.length) };
+        catSpeed = 0;
+      } else if (d < 64){
+        catSpeed = 0; cat.flip = b.x < cat.x;      // crouched, coiling for the next leap
+        cat.pose = 'stalk0';
+      } else { catTarget = b; catSpeed = 225; }
     }
   }
   else if (cat.state === 'toPigeon'){
@@ -2569,10 +2615,12 @@ function update(dt){
     }
   }
   // jump up into / down from the canopy (drawn height above the ground spot);
-  // the pigeon ride lifts him to a fixed cruising height
+  // the pigeon ride lifts him to a fixed cruising height. A bug pounce drives
+  // zOff itself (its own sine arc), so the easing stays out of its way.
+  if (cat.pounce && cat.state !== 'chaseBug') cat.pounce = null;   // interrupted mid-leap
   const zTarget = (cat.state === 'inTree' && cat.treeSpot) ? cat.treeSpot.perch
                 : (cat.state === 'pigeonRide') ? 54 : 0;
-  cat.zOff += clamp(zTarget - cat.zOff, -260 * dt, 260 * dt);
+  if (!cat.pounce) cat.zOff += clamp(zTarget - cat.zOff, -260 * dt, 260 * dt);
 
   // leash constraint (not during ending, and not while the cat is in the arms)
   if (gameState === 'play' && cat.state !== 'held'){
@@ -3104,7 +3152,10 @@ function render(now){
     }
     // in a tree, face so the paws grip the trunk (flip when on the tree's right)
     const catFlip = catUp ? (cat.x > cat.treeSpot.x) : cat.flip;
-    drawSprite(SPR.cat[cat.pose], variant, { x: cat.x, y: cat.y - cat.zOff, flip: catFlip });
+    // mid-pounce he stretches into the big leaping sprite, scaled down
+    const catSpr = cat.pounce ? SPR.jumpcat[cat.pounce.variant] : SPR.cat[cat.pose];
+    drawSprite(catSpr, variant, { x: cat.x, y: cat.y - cat.zOff, flip: catFlip,
+                                  scale: cat.pounce ? 0.72 : 1 });
     if (cat.carriedWorm)
       drawSprite(SPR.worm.idle, variant,
         { x: cat.x + (cat.flip ? -26 : 26), y: cat.y - 10 - cat.zOff, flip: cat.flip });
