@@ -1232,7 +1232,7 @@ const cat    = { x: 320, y: 1110, r: 8, pose: 'walk0', flip: false, animT: 0,
                  bottleSpot: null, rollCooldown: 18 + Math.random() * 22, holdDur: 0, squirmRot: 0,
                  reliefCooldown: 40 + Math.random() * 40,
                  reliefSpot: null, reliefKind: null, leadSide: 1, leadSwitchT: 0,
-                 pigeonCooldown: 14 + Math.random() * 16, pigeonTarget: null,
+                 pigeonTarget: null,
                  bugCooldown: 8 + Math.random() * 10, bugTarget: null,
                  pounce: null, pounceCd: 0 };
 let playT = 0;
@@ -1259,7 +1259,7 @@ function spawnPigeon(){
     if (colliders.some(c => x > c.x - 20 && x < c.x + c.w + 20 && y > c.y - 20 && y < c.y + c.h + 20)) continue;
     pigeons.push({ x, y, r: 7, state: 'ground', dir: Math.random() * 6.28, moveT: 1,
                    animT: 0, pose: 'walk0', flip: false, t: 0, life: 26 + Math.random() * 22,
-                   zOff: 0, cooT: 3 + Math.random() * 6, landTarget: null });
+                   zOff: 0, cooT: 3 + Math.random() * 6, landTarget: null, shyT: 0 });
     return;
   }
 }
@@ -1800,6 +1800,7 @@ function update(dt){
   }
   for (let i = pigeons.length - 1; i >= 0; i--){
     const pg = pigeons[i]; pg.t += dt;
+    if (pg.shyT > 0) pg.shyT -= dt;
     if (pg.state === 'ground'){
       // the player stomping too close scares it off (the CAT triggers the ride)
       if (pg.t > pg.life || dist(pg, player) < 42){
@@ -2224,17 +2225,16 @@ function update(dt){
       }
       if (cat.state === 'wander') cat.bugCooldown = 3;
     }
-    // sneak up on a pecking pigeon (this will not end how he expects)
-    cat.pigeonCooldown -= dt;
-    if (cat.state === 'wander' && cat.pigeonCooldown <= 0){
+    // a pecking pigeon nearby is irresistible — he ALWAYS goes for it
+    // (and this will not end how he expects)
+    if (cat.state === 'wander'){
       for (const pg of pigeons){
-        if (pg.state === 'ground' && dist(cat, pg) < 160){
+        if (pg.state === 'ground' && !(pg.shyT > 0) && dist(cat, pg) < 220){
           cat.state = 'toPigeon'; cat.pigeonTarget = pg; cat.stateT = 0;
           say(cat, T.cat.excited, 1); playMeow();
           break;
         }
       }
-      if (cat.state === 'wander') cat.pigeonCooldown = 6;
     }
     // spot a hedgehog
     if (cat.state === 'wander' && catTalkCooldown <= 0){
@@ -2461,7 +2461,7 @@ function update(dt){
   else if (cat.state === 'toPigeon'){
     const pg = cat.pigeonTarget;
     if (!pg || pg.state !== 'ground' || pigeons.indexOf(pg) < 0){
-      cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null; cat.pigeonCooldown = 10;
+      cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null;
     } else {
       catTarget = pg; catSpeed = 200;
       if (dist(cat, pg) < 24){
@@ -2470,8 +2470,9 @@ function update(dt){
         say(pg, T.pigeon.startle, 1.2);
         cat.state = 'pigeonRide'; cat.stateT = 0; cat._rideYelled = false;
         playHiss();
-      } else if (cat.stateT > 4){                    // leash too short after all
-        cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null; cat.pigeonCooldown = 12;
+      } else if (cat.stateT > 8){                    // truly stuck behind something
+        pg.shyT = 5;                                 // that bird gets a moment's peace
+        cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null;
       }
     }
   }
@@ -2491,8 +2492,7 @@ function update(dt){
   else if (cat.state === 'pigeonDrop'){
     catSpeed = 0; cat.pose = 'scared';                 // falling the last bit
     if (cat.zOff < 3){
-      cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null;
-      cat.pigeonCooldown = 60 + Math.random() * 45; catTalkCooldown = 5;
+      cat.state = 'wander'; cat.stateT = 0; cat.pigeonTarget = null; catTalkCooldown = 5;
       say(cat, T.pigeon.landed[Math.floor(Math.random() * T.pigeon.landed.length)], 2.8); playMumble();
     }
   }
@@ -2640,8 +2640,9 @@ function update(dt){
     // while examining something interesting, the cat digs in and anchors YOU
     const planted = ['lay','watchHedge','sniffCar','stareBottle','roll','relief','bury','playWorm'].includes(cat.state);
     const d = dist(cat, player);
-    if (cat.state === 'pigeonRide' || cat.state === 'pigeonDrop'){
-      // airborne behind the pigeon — the leash tows the PLAYER along the ground
+    if (cat.state === 'pigeonRide' || cat.state === 'pigeonDrop' || cat.state === 'toPigeon'){
+      // charging the bird or airborne behind it — the leash tows the PLAYER,
+      // so he always reaches the pigeon and the ride always happens
       if (d > LEASH_LEN){
         const vx = (player.x - cat.x) / d, vy = (player.y - cat.y) / d;
         player.x = cat.x + vx * LEASH_LEN;
