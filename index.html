@@ -1396,7 +1396,8 @@ const SFX_FILES = {
   bark:'sounds/bark.mp3', thunder:'sounds/thunder.mp3', rain:'sounds/rain.mp3',
   carloop:'sounds/carloop.mp3', tram:'sounds/tram.mp3', shout:'sounds/shout.mp3',
   thump:'sounds/thump.mp3', step:'sounds/step.mp3', munch:'sounds/munch.mp3',
-  birds:'sounds/birds.mp3', crickets:'sounds/crickets.mp3'
+  birds:'sounds/birds.mp3', crickets:'sounds/crickets.mp3',
+  fly:'sounds/fly.mp3', mosquito:'sounds/mosquito.mp3', moth:'sounds/moth.mp3'
 };
 function initAudio(){
   if (AC){ if (AC.state === 'suspended') AC.resume(); return; }
@@ -1489,6 +1490,18 @@ function bugAudioStart(b){
   const dest = pan || g;
   if (pan){ pan.connect(g); }
   g.connect(masterGain);
+  // preferred: the vendored ElevenLabs loop for this insect (fly/mosquito/moth);
+  // each bug gets its own slightly detuned copy so two flies don't phase-lock
+  if (SFX[b.type]){
+    const src = AC.createBufferSource(); src.buffer = SFX[b.type]; src.loop = true;
+    const rate0 = 1 + (Math.random() - 0.5) * 0.14;
+    src.playbackRate.value = rate0;
+    src.connect(dest);
+    src.start(0, Math.random() * Math.max(0, SFX[b.type].duration - 0.1));  // random loop phase
+    b.audio = { g, pan, nodes: [src], oscs: [], src, rate0 };
+    return;
+  }
+  // fallback (clip missing / not decoded yet): synthesized hum
   const nodes = [], oscs = [];
   if (b.type === 'moth'){
     // velvet wing flutter: soft low noise, pulsed at wing-beat rate, with a
@@ -1541,10 +1554,10 @@ function updateBugAudio(){
       if (b.audio.pan) b.audio.pan.pan.setTargetAtTime(clamp((b.x - player.x) / 420, -1, 1), t, 0.15);
       // slow organic pitch wander, plus little swoops whenever it darts
       // (b.dir jumps feed the phase; the ramp smooths them into glides)
-      if (b.audio.oscs.length){
-        const swoop = 1 + 0.05 * Math.sin(b.t * 0.8 + b.dir) + 0.03 * Math.sin(b.t * 2.3);
-        for (const o of b.audio.oscs) o.osc.frequency.setTargetAtTime(o.base * swoop, t, 0.1);
-      }
+      const swoop = 1 + 0.05 * Math.sin(b.t * 0.8 + b.dir) + 0.03 * Math.sin(b.t * 2.3);
+      if (b.audio.src)
+        b.audio.src.playbackRate.setTargetAtTime(b.audio.rate0 * swoop, t, 0.1);
+      else for (const o of b.audio.oscs) o.osc.frequency.setTargetAtTime(o.base * swoop, t, 0.1);
     }
   }
 }
