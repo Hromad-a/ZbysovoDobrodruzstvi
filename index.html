@@ -3282,12 +3282,21 @@ function render(now){
 }
 
 // ===================== LOOP =====================
+// frame-rate independent simulation: each animation frame simulates the WHOLE
+// real time that passed, split into steps small enough (<= 50ms) to stay
+// stable — so game time tracks real time even at low FPS on older devices
+// (a per-frame dt clamp used to stretch every timer there). At 60 fps this is
+// exactly one update per frame, same as before.
+const MAX_SIM = 0.25, SIM_CHUNK = 0.05;
 let last = performance.now();
 function loop(now){
-  const dt = Math.min(0.05, (now - last) / 1000);
+  let frame = (now - last) / 1000;
   last = now;
-  if (gameState === 'start') updateIntro(dt);
-  update(dt);
+  if (frame > MAX_SIM) frame = MAX_SIM;   // tab switch / long stall — don't fast-forward
+  if (gameState === 'start') updateIntro(frame);
+  const n = Math.max(1, Math.ceil(frame / SIM_CHUNK));
+  const d = frame / n;
+  for (let i = 0; i < n; i++) update(d);
   render(now);
   updateAudio();
   requestAnimationFrame(loop);
